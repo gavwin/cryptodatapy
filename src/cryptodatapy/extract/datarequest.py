@@ -27,6 +27,7 @@ class DataRequest:
         fields: Union[str, List[str]] = ["close"],
         tz: Optional[str] = None,
         cat: Optional[str] = None,
+        inst: Optional[str] = None,
         trials: Optional[int] = 3,
         pause: Optional[float] = 0.1,
         source_tickers: Optional[Union[str, List[str]]] = None,
@@ -70,6 +71,8 @@ class DataRequest:
             Timezone for the start/end dates in tz database format.
         cat: str, optional, {'crypto', 'fx', 'cmdty', 'eqty', 'rates', 'bonds', 'credit', 'macro', 'alt'}, default None
             Category of data, e.g. crypto, fx, rates, or macro.
+        inst: str, optional, default None
+            Institution name for institutional data sources, e.g. 'grayscale', 'purpose', etc.
         trials: int, optional, default 3
             Number of times to try data request.
         pause: float,  optional, default 0.1
@@ -105,6 +108,7 @@ class DataRequest:
         self.fields = fields  # fields
         self.tz = tz  # tz
         self.cat = cat  # category of asset class or time series
+        self.inst = inst  # institution
         self.trials = trials  # number of times to try query request
         self.pause = pause  # number of seconds to pause between query request trials
         self.source_tickers = source_tickers  # tickers used by data source
@@ -468,6 +472,25 @@ class DataRequest:
             )
 
     @property
+    def inst(self):
+        """
+        Returns institution for data request.
+        """
+        return self._inst
+
+    @inst.setter
+    def inst(self, inst):
+        """
+        Sets institution for data request.
+        """
+        if inst is None:
+            self._inst = inst
+        elif isinstance(inst, str):
+            self._inst = inst
+        else:
+            raise TypeError("Institution must be a string.")
+
+    @property
     def trials(self):
         """
         Returns number of trials for data request.
@@ -648,6 +671,63 @@ class DataRequest:
             raise TypeError(
                 "Source fields must be a string or list of strings (fields) in data source's format."
             )
+
+    def __getitem__(self, key: str):
+        """
+        Allows dictionary-style access to DataRequest attributes.
+
+        Supports aliases for converted parameters:
+        - 'mkts' maps to 'source_markets'
+        - When 'tickers', 'freq', 'start_date', 'end_date', or 'fields' are requested,
+          returns 'source_*' version if it exists and is not None, otherwise returns the original
+
+        Parameters
+        ----------
+        key: str
+            The attribute name to access.
+
+        Returns
+        -------
+        value
+            The value of the requested attribute.
+
+        Examples
+        --------
+        >>> data_req = DataRequest(tickers='btc')
+        >>> data_req['tickers']  # Same as data_req.tickers
+        ['btc']
+        """
+        # Handle 'mkts' alias for 'source_markets'
+        if key == 'mkts':
+            return getattr(self, 'source_markets', None)
+
+        # For parameters that might be converted, prefer source_* version if it exists
+        if key in ['tickers', 'freq', 'start_date', 'end_date', 'fields']:
+            source_key = f'source_{key}'
+            source_value = getattr(self, source_key, None)
+            # Return source version if it exists and is not None
+            if source_value is not None:
+                return source_value
+
+        return getattr(self, key)
+
+    def __setitem__(self, key: str, value):
+        """
+        Allows dictionary-style assignment to DataRequest attributes.
+
+        Parameters
+        ----------
+        key: str
+            The attribute name to set.
+        value
+            The value to assign to the attribute.
+
+        Examples
+        --------
+        >>> data_req = DataRequest()
+        >>> data_req['tickers'] = 'eth'  # Same as data_req.tickers = 'eth'
+        """
+        setattr(self, key, value)
 
     def get_req(self, url: str, params: Dict[str, Union[str, int]],
                 headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:

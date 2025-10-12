@@ -69,8 +69,8 @@ class Glassnode(DataVendor):
         rate_limit: Any, optional, Default None
             Number of API calls made and left, by time frequency.
         """
-        DataVendor.__init__(self, categories, exchanges, indexes, assets, markets, market_types, fields,
-                            frequencies, base_url, api_key, max_obs_per_call, rate_limit)
+        DataVendor.__init__(self, categories, exchanges, assets, indexes, markets, market_types, fields,
+                            frequencies, base_url, None, api_key, max_obs_per_call, rate_limit)
 
         if frequencies is None:
             self.frequencies = ['10min', '15min', '30min', '1h', '2h', '4h', '8h', 'd', 'w', 'm', 'q', 'y']

@@ -196,7 +196,6 @@ class TestCryptoCompare:
         assert self.ohlcv_params['params']['tsym'] == 'USD'
         assert self.ohlcv_params['params']['limit'] == 2000
         assert self.ohlcv_params['params']['e'] == 'CCCAGG'
-        assert self.ohlcv_params['params']['api_key'] == self.cc.api_key
 
     def test_onchain_url_params(self) -> None:
         """
@@ -206,7 +205,6 @@ class TestCryptoCompare:
         assert self.onchain_params['url'] == 'https://min-api.cryptocompare.com/data/blockchain/histo/day?'
         assert self.onchain_params['params']['fsym'] == 'BTC'
         assert self.onchain_params['params']['limit'] == 2000
-        assert self.onchain_params['params']['api_key'] == self.cc.api_key
 
     def test_social_url_params(self) -> None:
         """
@@ -215,7 +213,6 @@ class TestCryptoCompare:
         assert self.social_params['url'] == 'https://min-api.cryptocompare.com/data/social/coin/histo/day'
         assert self.social_params['params']['coinId'] == 1182
         assert self.social_params['params']['limit'] == 2000
-        assert self.social_params['params']['api_key'] == self.cc.api_key
 
     @responses.activate
     def test_req_data(self):

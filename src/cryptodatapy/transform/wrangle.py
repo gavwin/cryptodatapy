@@ -412,6 +412,13 @@ class WrangleInfo:
         """
         # format response
         assets = pd.DataFrame(self.data_resp)
+
+        # Check if dataframe is empty or missing required columns
+        if assets.empty or 'symbol' not in assets.columns:
+            if as_list:
+                return []
+            return pd.DataFrame()
+
         # rename cols and set index
         assets.rename(columns={'symbol': 'ticker'}, inplace=True)
         assets = assets.set_index('ticker')
@@ -440,6 +447,13 @@ class WrangleInfo:
         """
         # format response
         fields = pd.DataFrame(self.data_resp)
+
+        # Check if dataframe is empty or missing required columns
+        if fields.empty or 'path' not in fields.columns:
+            if as_list:
+                return []
+            return pd.DataFrame()
+
         # create fields and cat cols
         fields['fields'] = fields.path.str.split(pat='/', expand=True, n=3)[3]
         fields['categories'] = fields.path.str.split(pat='/', expand=True)[3]

@@ -32,6 +32,7 @@ class ConvertParams:
         # tickers
         if self.data_req.source_tickers is None:
             self.data_req.source_tickers = [ticker.upper() for ticker in self.data_req.tickers]
+            self.data_req.tickers = self.data_req.source_tickers
 
         # freq
         if self.data_req.source_freq is None:
@@ -95,7 +96,7 @@ class ConvertParams:
             elif self.data_req.freq == "block":
                 self.data_req.source_freq = "1b"
             elif self.data_req.freq == "tick":
-                self.data_req.source_freq = "raw"
+                self.data_req.source_freq = "tick"
             elif self.data_req.freq[-1] == "s":
                 self.data_req.source_freq = "1s"
             elif self.data_req.freq[-3:] == "min":
@@ -312,6 +313,10 @@ class ConvertParams:
                         f"{ticker} not found for Tiingo source. Check tickers in"
                         f" data catalog or try using source_tickers parameter."
                     )
+        elif self.data_req.source_tickers is None:
+            # For non-equity categories, convert tickers to lowercase
+            self.data_req.source_tickers = [ticker.lower() for ticker in self.data_req.tickers]
+            self.data_req.tickers = self.data_req.source_tickers
 
         # freq
         if self.data_req.source_freq is None:
@@ -321,6 +326,10 @@ class ConvertParams:
                 self.data_req.source_freq = self.data_req.freq
             elif self.data_req.freq[-1] == "h":
                 self.data_req.source_freq = "1hour"
+            elif self.data_req.freq == "w":
+                self.data_req.source_freq = "1week"
+            elif self.data_req.freq == "d":
+                self.data_req.source_freq = "1day"
             else:
                 self.data_req.source_freq = "1day"
 
@@ -379,6 +388,7 @@ class ConvertParams:
         # tickers
         if self.data_req.source_tickers is None:
             self.data_req.source_tickers = [ticker.upper() for ticker in self.data_req.tickers]
+            self.data_req.tickers = self.data_req.source_tickers
 
         # freq
         if self.data_req.source_freq is None:
