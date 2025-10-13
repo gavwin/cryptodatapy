@@ -348,6 +348,11 @@ class CoinMetrics(DataVendor):
 
                 # request next page
                 next_page_data_resp = data_req.get_req(url=next_page_url, params=None)
+
+                # check if response is None (failed after retries)
+                if next_page_data_resp is None:
+                    raise Exception("Failed to fetch paginated data after multiple attempts.")
+
                 next_page_data, next_page_url = next_page_data_resp.get('data', []), next_page_data_resp.get(
                     'next_page_url')
 

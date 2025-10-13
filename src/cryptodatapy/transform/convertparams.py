@@ -96,7 +96,7 @@ class ConvertParams:
             elif self.data_req.freq == "block":
                 self.data_req.source_freq = "1b"
             elif self.data_req.freq == "tick":
-                self.data_req.source_freq = "tick"
+                self.data_req.source_freq = "raw"
             elif self.data_req.freq[-1] == "s":
                 self.data_req.source_freq = "1s"
             elif self.data_req.freq[-3:] == "min":
