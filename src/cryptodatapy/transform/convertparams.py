@@ -220,25 +220,21 @@ class ConvertParams:
             self.data_req.tickers = self.data_req.source_tickers
         else:
             tickers = self.data_req.tickers
-        # convert freq
-        if self.data_req.source_freq is not None:
-            freq = self.data_req.source_freq
-            self.data_req.freq = self.data_req.source_freq
+        # convert freq - always convert from original freq, not source_freq
+        if self.data_req.freq is None:
+            freq = "24h"
+        elif self.data_req.freq[-3:] == "min":
+            freq = "10m"
+        elif self.data_req.freq[-1] == "h":
+            freq = "1h"
+        elif self.data_req.freq == "d":
+            freq = "24h"
+        elif self.data_req.freq == "w":
+            freq = "1w"
+        elif self.data_req.freq == "m":
+            freq = "1month"
         else:
-            if self.data_req.freq is None:
-                freq = "24h"
-            elif self.data_req.freq[-3:] == "min":
-                freq = "10m"
-            elif self.data_req.freq[-1] == "h":
-                freq = "1h"
-            elif self.data_req.freq == "d":
-                freq = "24h"
-            elif self.data_req.freq == "w":
-                freq = "1w"
-            elif self.data_req.freq == "m":
-                freq = "1month"
-            else:
-                freq = "24h"
+            freq = "24h"
         # convert quote ccy
         if self.data_req.quote_ccy is None:
             quote_ccy = "USD"
@@ -508,12 +504,8 @@ class ConvertParams:
                         f" data catalog and try again."
                     )
                     self.data_req.tickers.remove(ticker)
-        # convert freq
-        if self.data_req.source_freq is not None:
-            freq = self.data_req.source_freq
-            self.data_req.freq = self.data_req.source_freq
-        else:
-            freq = self.data_req.freq
+        # convert freq - use original freq
+        freq = self.data_req.freq
         # quote ccy
         quote_ccy = self.data_req.quote_ccy
         # fields
@@ -566,12 +558,8 @@ class ConvertParams:
                         f"data catalog and try again."
                     )
                     self.data_req.tickers.remove(ticker)
-        # convert freq
-        if self.data_req.source_freq is not None:
-            freq = self.data_req.source_freq
-            self.data_req.freq = self.data_req.source_freq
-        else:
-            freq = self.data_req.freq
+        # convert freq - use original freq
+        freq = self.data_req.freq
         # convert quote ccy
         if self.data_req.quote_ccy is None:
             quote_ccy = "USD"
@@ -1031,19 +1019,15 @@ class ConvertParams:
             for k, v in all_tickers_dict.items():
                 if ticker in v:
                     tickers_dict[ticker] = (k, all_tickers_dict[k][ticker])
-        # convert freq
+        # convert freq - use original freq
         daily_freqs_list = ['The-Devil-in-HMLs-Details-Factors-', 'Quality-Minus-Junk-Factors-',
                             'Betting-Against-Beta-Equity-Factors-']
-        if self.data_req.source_freq is not None:
-            freq = self.data_req.source_freq
-            self.data_req.freq = self.data_req.source_freq
+        if all([file[0] in daily_freqs_list for file in tickers_dict.values()]) and \
+           (self.data_req.freq == 'd' or self.data_req.freq == 'w'):
+            freq = 'Daily'
         else:
-            if all([file[0] in daily_freqs_list for file in tickers_dict.values()]) and \
-               (self.data_req.freq == 'd' or self.data_req.freq == 'w'):
-                freq = 'Daily'
-            else:
-                freq = 'Monthly'
-                self.data_req.freq = 'm'
+            freq = 'Monthly'
+            self.data_req.freq = 'm'
 
         return {
             "tickers": tickers_dict,
@@ -1078,30 +1062,26 @@ class ConvertParams:
         
         # convert markets (if needed)
         markets = [f"{ticker}-USD" for ticker in tickers]
-        
-        # convert freq
-        if self.data_req.source_freq is not None:
-            freq = self.data_req.source_freq
-            self.data_req.freq = self.data_req.source_freq
+
+        # convert freq - use original freq
+        if self.data_req.freq is None:
+            freq = "1DAY"
+        elif self.data_req.freq == "1min":
+            freq = "1MIN"
+        elif self.data_req.freq == "5min":
+            freq = "5MINS"
+        elif self.data_req.freq == "15min":
+            freq = "15MINS"
+        elif self.data_req.freq == "30min":
+            freq = "30MINS"
+        elif self.data_req.freq == "1h":
+            freq = "1HOUR"
+        elif self.data_req.freq == "4h":
+            freq = "4HOURS"
+        elif self.data_req.freq in ["1d", "d"]:
+            freq = "1DAY"
         else:
-            if self.data_req.freq is None:
-                freq = "1DAY"
-            elif self.data_req.freq == "1min":
-                freq = "1MIN"
-            elif self.data_req.freq == "5min":
-                freq = "5MINS"
-            elif self.data_req.freq == "15min":
-                freq = "15MINS"
-            elif self.data_req.freq == "30min":
-                freq = "30MINS"
-            elif self.data_req.freq == "1h":
-                freq = "1HOUR"
-            elif self.data_req.freq == "4h":
-                freq = "4HOURS"
-            elif self.data_req.freq in ["1d", "d"]:
-                freq = "1DAY"
-            else:
-                freq = "1DAY"  # Default to daily
+            freq = "1DAY"  # Default to daily
             
         # convert fields
         if self.data_req.source_fields is not None:
