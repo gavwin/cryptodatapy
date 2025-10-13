@@ -128,6 +128,12 @@ class ConvertParams:
         else:
             self.data_req.tz = self.data_req.tz
 
+        # convert inst
+        if self.data_req.inst is None:
+            self.data_req.inst = "grayscale"
+        else:
+            self.data_req.inst = self.data_req.inst.lower()
+
         # markets
         mkts_list = []
 
@@ -643,7 +649,7 @@ class ConvertParams:
             self.data_req.source_freq = self.data_req.freq
 
         # start date
-        if self.data_req.source_start_date is None:
+        if self.data_req.start_date is None:
             self.data_req.source_start_date = pd.Timestamp('1920-01-01')
         else:
             self.data_req.source_start_date = self.data_req.start_date
