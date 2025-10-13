@@ -317,15 +317,27 @@ class Glassnode(DataVendor):
         # convert data request parameters to CryptoCompare format
         gn_data_req = ConvertParams(data_req).to_glassnode()
 
+        # check if assets list is available
+        if not self.assets or len(self.assets) == 0:
+            raise ValueError("Assets list is empty. Failed to retrieve available assets from Glassnode API. "
+                           "Check your API key and network connection, or the Glassnode API may be unavailable.")
+
         # check tickers
-        if not all([ticker.upper() in self.assets for ticker in gn_data_req['tickers']]):
-            raise ValueError(f"Some of the selected assets are not available."
-                             " See assets attribute for a list of available assets.")
+        missing_tickers = [ticker for ticker in gn_data_req['tickers'] if ticker.upper() not in self.assets]
+        if missing_tickers:
+            raise ValueError(f"The following assets are not available: {missing_tickers}. "
+                           f"Available assets: {self.assets[:10]}{'...' if len(self.assets) > 10 else ''}")
+
+        # check if fields list is available
+        if not self.fields or len(self.fields) == 0:
+            raise ValueError("Fields list is empty. Failed to retrieve available fields from Glassnode API. "
+                           "Check your API key and network connection, or the Glassnode API may be unavailable.")
 
         # check fields
-        if not all([field in self.fields for field in gn_data_req['fields']]):
-            raise ValueError(f"Some of the selected fields are not available."
-                             " See fields attribute for a list of available fields.")
+        missing_fields = [field for field in gn_data_req['fields'] if field not in self.fields]
+        if missing_fields:
+            raise ValueError(f"The following fields are not available: {missing_fields}. "
+                           f"See fields attribute for full list of available fields.")
 
         # check freq
         if data_req.freq not in self.frequencies:

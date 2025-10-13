@@ -269,11 +269,26 @@ class DataCatalog:
         driver.implicitly_wait(60)
         # page source
         html = driver.page_source
-        # get tables
-        tables = pd.read_html(html)
-        df = tables[0]
         # close driver
         driver.close()
+
+        # Check if HTML is empty or invalid
+        if not html or html.strip() == "":
+            raise ValueError(f"Received empty HTML response from {sources[source]}. "
+                           "The website may be down or blocking automated access.")
+
+        # get tables
+        try:
+            tables = pd.read_html(html)
+        except ValueError as e:
+            raise ValueError(f"No tables found in HTML from {sources[source]}. "
+                           f"The website structure may have changed. Error: {str(e)}")
+
+        if not tables or len(tables) == 0:
+            raise ValueError(f"No tables found in HTML from {sources[source]}. "
+                           "The website structure may have changed.")
+
+        df = tables[0]
 
         # wrangle table
         if source == "coinmarketcap":

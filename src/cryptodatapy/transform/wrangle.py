@@ -776,6 +776,16 @@ class WrangleData:
         # convert fields to lib
         self.convert_fields_to_lib(data_source='dbnomics')
 
+        # Check if dataframe is empty or missing 'date' column after field conversion
+        if self.data_resp.empty:
+            raise ValueError("Data response is empty after field conversion. "
+                           "The API may have returned no data for the requested series.")
+
+        if 'date' not in self.data_resp.columns:
+            raise ValueError(f"'date' column not found after field conversion. "
+                           f"Available columns: {self.data_resp.columns.tolist()}. "
+                           f"The API response may be missing the 'period' field.")
+
         # convert to datetime
         self.data_resp['date'] = pd.to_datetime(self.data_resp['date'])
 
