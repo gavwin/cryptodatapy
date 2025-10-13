@@ -82,18 +82,47 @@ class CCXT(Library):
         self.data_resp = []
         self.data = pd.DataFrame()
 
-    def get_exchanges_info(self) -> List[str]:
+    def get_exchanges_info(self, exch: Optional[str] = None) -> Union[List[str], pd.DataFrame]:
         """
         Get exchanges info.
 
+        Parameters
+        ----------
+        exch: str, optional, default None
+            Name of exchange to get detailed info for. If None, returns list of all exchanges.
+
         Returns
         -------
-        exch: list or pd.DataFrame
-            List or dataframe with info on supported exchanges.
+        exch_info: list or pd.DataFrame
+            List of all supported exchanges, or DataFrame with detailed info for specific exchange.
         """
         if self.exchanges is None:
             self.exchanges = ccxt.exchanges
 
+        # If exch parameter provided, return detailed info for that exchange as DataFrame
+        if exch is not None:
+            if exch not in ccxt.exchanges:
+                raise ValueError(
+                    f"{exch} is not a supported exchange. "
+                    f"Use get_exchanges_info() without parameters to get a list of supported exchanges."
+                )
+
+            # Instantiate exchange to get detailed info
+            exchange_obj = getattr(ccxt, exch)()
+
+            # Create DataFrame with exchange info
+            exch_info = pd.DataFrame({
+                'name': [exchange_obj.name],
+                'id': [exchange_obj.id],
+                'countries': [exchange_obj.countries],
+                'has': [exchange_obj.has],
+                'rateLimit': [exchange_obj.rateLimit]
+            }, index=[exch])
+            exch_info.index.name = 'exchange'
+
+            return exch_info
+
+        # Otherwise return list of all exchanges
         return self.exchanges
 
     def get_indexes_info(self) -> None:

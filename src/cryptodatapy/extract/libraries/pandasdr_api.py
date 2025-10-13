@@ -94,6 +94,10 @@ class PandasDataReader(Library):
         self.data_req = None
         self.data = pd.DataFrame()
 
+        # Initialize fields if not provided
+        if self.fields is None:
+            self.fields = self.get_fields_info()
+
     @staticmethod
     def get_vendors_info():
         """
