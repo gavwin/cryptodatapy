@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from importlib import resources
+from io import StringIO
 from typing import Dict, List, Optional, Union
 
 import pandas as pd
@@ -279,7 +280,7 @@ class DataCatalog:
 
         # get tables
         try:
-            tables = pd.read_html(html)
+            tables = pd.read_html(StringIO(html), flavor='html5lib')
         except ValueError as e:
             raise ValueError(f"No tables found in HTML from {sources[source]}. "
                            f"The website structure may have changed. Error: {str(e)}")
@@ -292,31 +293,31 @@ class DataCatalog:
 
         # wrangle table
         if source == "coinmarketcap":
-            df["name"] = df.Name.str.split("(\\d+)", 1, expand=True)[0]
-            df["ticker"] = df.Name.str.split("(\\d+)", 1, expand=True)[2]
-            df["price"] = df.Price.str.split("$", 1, expand=True)[1].astype(float)
+            df["name"] = df.Name.str.split("(\\d+)", n=1, expand=True)[0]
+            df["ticker"] = df.Name.str.split("(\\d+)", n=1, expand=True)[2]
+            df["price"] = df.Price.str.split("$", n=1, expand=True)[1].astype(float)
             df["24h_%_chg"] = (
-                df["24h %"].str.split("%", 1, expand=True)[0].astype(float) / 100
+                df["24h %"].str.split("%", n=1, expand=True)[0].astype(float) / 100
             )
             df["7d_%_chg"] = (
-                df["7d %"].str.split("%", 1, expand=True)[0].astype(float) / 100
+                df["7d %"].str.split("%", n=1, expand=True)[0].astype(float) / 100
             )
             df["mkt_cap"] = (
                 df["Market Cap"]
-                .str.split("$", 2, expand=True)[2]
+                .str.split("$", n=2, expand=True)[2]
                 .str.replace(",", "", regex=False)
                 .astype(float)
             )
             df["volume_24h"] = (
                 df["Volume(24h)"]
-                .str.split(" ", 1, expand=True)[0]
+                .str.split(" ", n=1, expand=True)[0]
                 .str.replace("$", "", regex=False)
                 .str.replace(",", "", regex=False)
                 .astype(float)
             )
             df["circ_suppkly"] = (
                 df["Circulating Supply"]
-                .str.split(" ", 1, expand=True)[0]
+                .str.split(" ", n=1, expand=True)[0]
                 .str.replace(",", "", regex=False)
                 .astype(float)
             )
@@ -328,28 +329,32 @@ class DataCatalog:
         elif source == "coingecko":
 
             df["name"] = (
-                df.Coin.str.split(" ", 4, expand=True)[0]
+                df.Coin.str.split(" ", n=4, expand=True)[0]
                 + " "
-                + df.Coin.str.split(" ", 4, expand=True)[1]
+                + df.Coin.str.split(" ", n=4, expand=True)[1]
             )
             tickers_list = []
-            for row in df.Coin.str.split(" ", 4, expand=True).iterrows():
-                tickers_list.append(row[1].dropna().iloc[-1])
+            for row in df.Coin.str.split(" ", n=4, expand=True).iterrows():
+                non_na_values = row[1].dropna()
+                if len(non_na_values) > 0:
+                    tickers_list.append(non_na_values.iloc[-1])
+                else:
+                    tickers_list.append(None)  # or empty string ""
             df["ticker"] = tickers_list
             df["price"] = (
-                df.Price.str.split("$", 0, expand=True)[1]
+                df.Price.str.split("$", n=0, expand=True)[1]
                 .str.replace(",", "")
                 .astype(float)
             )
             df["mkt_cap"] = (
-                df["Market Capitalization"]
-                .str.split("$", 1, expand=True)[1]
+                df["Market Cap"]
+                .str.split("$", n=1, expand=True)[1]
                 .str.replace(",", "")
                 .astype(float)
             )
             df["24h_volume"] = (
                 df["24h Volume"]
-                .str.split("$", 1, expand=True)[1]
+                .str.split("$", n=1, expand=True)[1]
                 .str.replace(",", "")
                 .astype(float)
             )
