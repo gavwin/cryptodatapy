@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pandas as pd
 import pytest
@@ -663,7 +663,7 @@ def test_convert_famafrench_start_date(dr_sd, ff_sd) -> None:
 @pytest.mark.parametrize(
     "dr_ed, cc_ed",
     [
-        (None, round(pd.Timestamp(datetime.utcnow()).timestamp())),
+        (None, round(pd.Timestamp(datetime.now(timezone.utc)).timestamp())),
         ("2020-12-31", 1609372800),
         (datetime(2020, 12, 31), 1609372800),
         (pd.Timestamp("2020-12-31 00:00:00"), 1609372800),
@@ -678,7 +678,7 @@ def test_convert_cc_end_date(dr_ed, cc_ed) -> None:
     if dr_ed is None:
         assert (
             pd.to_datetime(cc_params["end_date"], unit="s").date()
-            == datetime.utcnow().date()
+            == datetime.now(timezone.utc).date()
         )
     else:
         assert cc_params["end_date"] == cc_ed, "End date parameter conversion failed."
@@ -687,7 +687,7 @@ def test_convert_cc_end_date(dr_ed, cc_ed) -> None:
 @pytest.mark.parametrize(
     "dr_ed, cx_ed",
     [
-        (None, round(pd.Timestamp(datetime.utcnow()).timestamp() * 1e3)),
+        (None, round(pd.Timestamp(datetime.now(timezone.utc)).timestamp() * 1e3)),
         ("2020-12-31", 1609372800000),
         (datetime(2020, 12, 31), 1609372800000),
         (pd.Timestamp("2020-12-31 00:00:00"), 1609372800000),
@@ -702,7 +702,7 @@ def test_convert_cx_end_date(dr_ed, cx_ed) -> None:
     if dr_ed is None:
         assert (
             pd.to_datetime(cx_params["end_date"], unit="ms").date()
-            == datetime.utcnow().date()
+            == datetime.now(timezone.utc).date()
         )
     else:
         assert cx_params["end_date"] == cx_ed, "End date parameter conversion failed."
@@ -729,7 +729,7 @@ def test_convert_gn_end_date(dr_ed, gn_ed) -> None:
 @pytest.mark.parametrize(
     "dr_ed, cv_ed",
     [
-        (None, datetime.utcnow().date()),
+        (None, datetime.now(timezone.utc).date()),
         ("2020-12-31", datetime(2020, 12, 31, 0, 0)),
         # (datetime(2020, 12, 31), datetime(2020, 12, 31)),
         (pd.Timestamp("2020-12-31 00:00:00"), pd.Timestamp("2020-12-31 00:00:00")),
@@ -746,7 +746,7 @@ def test_convert_end_date(dr_ed, cv_ed) -> None:
         cv_params = ConvertParams(data_req=data_req).to_fred()
         assert cv_params["end_date"].date() == cv_ed
         cv_params = ConvertParams(data_req=data_req).to_yahoo()
-        assert cv_params["end_date"] == datetime.utcnow().strftime('%Y-%m-%d')
+        assert cv_params["end_date"] == datetime.now(timezone.utc).strftime('%Y-%m-%d')
     else:
         cv_params = ConvertParams(data_req=data_req).to_tiingo()
         assert cv_params["end_date"] == cv_ed, "Tiingo end date parameter conversion failed."
@@ -761,7 +761,7 @@ def test_convert_end_date(dr_ed, cv_ed) -> None:
 @pytest.mark.parametrize(
     "dr_ed, wb_ed",
     [
-        (None, datetime.utcnow().year),
+        (None, datetime.now(timezone.utc).year),
         ("2015-01-01", 2015),
     ],
 )

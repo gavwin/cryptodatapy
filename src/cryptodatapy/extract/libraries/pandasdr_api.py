@@ -241,9 +241,12 @@ class PandasDataReader(Library):
         # check fields
         if self.fields is None:
             self.get_fields_info()
-        if not any(field in self.fields for field in self.data_req.fields):
+        # Get available fields for the category
+        category_fields = self.fields.get(self.data_req.cat, []) if isinstance(self.fields, dict) else self.fields
+        if not any(field in category_fields for field in self.data_req.fields):
             raise ValueError(
-                f"{self.data_req.fields} fields are not available for {self.data_req.cat}."
+                f"{self.data_req.fields} fields are not available for {self.data_req.cat}. "
+                f"Available fields: {category_fields}"
             )
 
         return self.data_req

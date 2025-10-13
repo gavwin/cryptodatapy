@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
@@ -28,7 +28,7 @@ class TestFilter:
     @pytest.fixture(autouse=True)
     def filter_short_instance(self, raw_ohlcv_data):
         # create short series
-        start_date = datetime.utcnow() - pd.Timedelta(days=50)
+        start_date = datetime.now(timezone.utc) - pd.Timedelta(days=50)
         raw_ohlcv_data.loc[pd.IndexSlice[:start_date, "BTC"], :] = np.nan
         self.filter_short_instance = Filter(raw_ohlcv_data)
 

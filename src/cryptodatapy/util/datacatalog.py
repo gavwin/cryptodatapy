@@ -363,6 +363,9 @@ class DataCatalog:
             # set index
             df.set_index("ticker", inplace=True)
 
+        # remove duplicate ticker entries (keep first occurrence)
+        df = df[~df.index.duplicated(keep='first')]
+
         # rank by
         if rank_by is not None:
             sc = df.sort_values(by=rank_by, ascending=False)
@@ -371,7 +374,7 @@ class DataCatalog:
 
         # tickers list
         if as_list:
-            # remove duplicated tickers
-            sc = df.loc[df.index.drop_duplicates().to_list()].index.to_list()
+            # return tickers as list
+            sc = sc.index.to_list()
 
         return sc
