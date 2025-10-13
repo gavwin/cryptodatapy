@@ -50,6 +50,10 @@ pytest-asyncio = ">=0.24.0"
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "ignore::DeprecationWarning:pandas_datareader.*",
+    "ignore::DeprecationWarning:distutils.*",
+]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
