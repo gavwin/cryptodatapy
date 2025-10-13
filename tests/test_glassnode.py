@@ -10,7 +10,9 @@ from cryptodatapy.util.datacredentials import DataCredentials
 
 # url endpoints
 base_url = DataCredentials().glassnode_base_url
-urls = {'assets_info': 'assets', 'fields_info': 'endpoints'}
+# Note: Glassnode updated API - metadata is now under /v1/metadata/ instead of /v1/metrics/
+metadata_base_url = base_url.replace('/v1/metrics/', '/v1/metadata/')
+urls = {'assets_info': 'assets', 'fields_info': 'metrics'}
 
 
 @pytest.fixture
@@ -34,7 +36,7 @@ def test_req_assets(gn_req_assets, gn):
     """
     Test get request for assets info.
     """
-    url = base_url + urls['assets_info'] + '?api_key=' + gn.api_key
+    url = metadata_base_url + urls['assets_info'] + '?api_key=' + gn.api_key
     responses.add(responses.GET, url, json=gn_req_assets, status=200)
 
     req_assets = gn.req_assets()
@@ -52,7 +54,7 @@ def test_req_fields(gn_req_fields, gn):
     """
     Test get request for fields info.
     """
-    url = base_url.replace('v1', 'v2') + urls['fields_info'] + '?api_key=' + gn.api_key
+    url = metadata_base_url + urls['fields_info'] + '?api_key=' + gn.api_key
     responses.add(responses.GET, url, json=gn_req_fields, status=200)
 
     req_fields = gn.req_fields()

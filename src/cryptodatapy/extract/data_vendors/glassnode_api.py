@@ -13,7 +13,8 @@ from cryptodatapy.util.datacredentials import DataCredentials
 data_cred = DataCredentials()
 
 # url endpoints
-urls = {'assets_info': 'assets', 'fields_info': 'endpoints'}
+# Note: Glassnode updated API - metadata is now under /v1/metadata/ instead of /v1/metrics/
+urls = {'assets_info': 'assets', 'fields_info': 'metrics'}
 
 
 class Glassnode(DataVendor):
@@ -108,7 +109,9 @@ class Glassnode(DataVendor):
         dict: dictionary
             Data response with asset info in json format.
         """
-        return DataRequest().get_req(url=self.base_url + urls['assets_info'], params={'api_key': self.api_key})
+        # Note: Glassnode moved metadata endpoints from /v1/metrics/ to /v1/metadata/
+        metadata_base_url = self.base_url.replace('/v1/metrics/', '/v1/metadata/')
+        return DataRequest().get_req(url=metadata_base_url + urls['assets_info'], params={'api_key': self.api_key})
 
     def get_assets_info(self, as_list: bool = False) -> Union[list[str], pd.DataFrame]:
         """
@@ -146,7 +149,10 @@ class Glassnode(DataVendor):
         dict: dictionary
             Data response with fields info in json format.
         """
-        return DataRequest().get_req(url=self.base_url.replace('v1', 'v2') + urls['fields_info'],
+        # Note: Glassnode moved metadata endpoints from /v1/metrics/ to /v1/metadata/
+        # and renamed 'endpoints' to 'metrics'
+        metadata_base_url = self.base_url.replace('/v1/metrics/', '/v1/metadata/')
+        return DataRequest().get_req(url=metadata_base_url + urls['fields_info'],
                                      params={'api_key': self.api_key})
 
     def get_fields_info(self, data_type: Optional[str] = None, as_list: bool = False) -> Union[list[str], pd.DataFrame]:

@@ -52,14 +52,14 @@ def test_check_params(db) -> None:
 def test_integration_get_data(db) -> None:
     """
     Test integration of get data method.
+    Note: Removed BIS credit tickers (US_Credit/GDP_HH, WL_Credit_Banks) as BIS total_credit and gli datasets
+    are no longer available in DBnomics.
     """
     data_req = DataRequest(
         tickers=[
             "US_GDP_Sh_PPP",
             "EZ_GDP_Sh_PPP",
             "CN_GDP_Sh_PPP",
-            "US_Credit/GDP_HH",
-            "WL_Credit_Banks",
         ],
         fields="actual",
         cat="macro",
@@ -73,8 +73,6 @@ def test_integration_get_data(db) -> None:
         df.index.droplevel(1), pd.DatetimeIndex
     ), "Index is not DatetimeIndex."  # datetimeindex
     assert set(df.index.droplevel(0).unique()) == {
-        "US_Credit/GDP_HH",
-        "WL_Credit_Banks",
         "CN_GDP_Sh_PPP",
         "EZ_GDP_Sh_PPP",
         "US_GDP_Sh_PPP",
