@@ -90,7 +90,7 @@ class CoinMetrics(DataVendor):
         Parameters
         ----------
         data_type: str, {'catalog_exchanges', 'catalog_indexes', 'catalog_assets', 'catalog_institutions',
-                         'catalog_markets', 'catalog_metrics' }
+                         'catalog_markets', 'reference_data_asset_metrics' }
             Type of data to request metadata for.
 
         Returns
@@ -99,7 +99,15 @@ class CoinMetrics(DataVendor):
             Object with metadata.
         """
         try:
-            self.data_resp = getattr(client, data_type)()
+            resp = getattr(client, data_type)()
+            # For reference_data endpoints, convert DataCollection to list
+            if data_type.startswith('reference_data_') or data_type.startswith('catalog_') and data_type.endswith('_v2'):
+                if hasattr(resp, 'to_list'):
+                    self.data_resp = resp.to_list()
+                else:
+                    self.data_resp = resp
+            else:
+                self.data_resp = resp
 
         except AssertionError as e:
             logging.warning(e)
@@ -207,7 +215,7 @@ class CoinMetrics(DataVendor):
             List or dataframe of on-chain info.
         """
         # req data
-        self.req_meta(data_type='catalog_metrics')
+        self.req_meta(data_type='reference_data_asset_metrics')
         # wrangle data resp
         onchain_fields = WrangleInfo(self.data_resp).cm_meta_resp(as_list=as_list, index_name='fields')
 
