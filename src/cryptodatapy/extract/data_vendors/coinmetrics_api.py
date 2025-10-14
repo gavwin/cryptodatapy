@@ -338,63 +338,72 @@ class CoinMetrics(DataVendor):
 
     def req_data(self, data_req: DataRequest, data_type: str, params: Dict[str, Union[str, int]]) -> pd.DataFrame:
         """
-        Sends data request to Python client.
+        Sends data request to Python client SDK.
 
         Parameters
         ----------
         data_req: DataRequest
             Parameters of data request in CryptoDataPy format.
         data_type: str
-            Data type to retrieve.
+            Data type to retrieve (e.g., '/timeseries/asset-metrics').
         params: dict
-            Dictionary containing parameter values for get request.
+            Dictionary containing parameter values for SDK method call.
 
         Returns
         -------
         df: pd.DataFrame
             Dataframe with datetime, ticker/identifier, and field/col values.
         """
-        # url
-        url = self.base_url + data_type
+        # Map URL paths to SDK method names
+        method_map = {
+            '/timeseries/index-levels': 'get_index_levels',
+            '/timeseries/market-candles': 'get_market_candles',
+            '/timeseries/asset-metrics': 'get_asset_metrics',
+            '/timeseries/market-openinterest': 'get_market_open_interest',
+            '/timeseries/market-funding-rates': 'get_market_funding_rates',
+            '/timeseries/market-trades': 'get_market_trades',
+            '/timeseries/market-quotes': 'get_market_quotes',
+        }
 
-        # headers with API key
-        headers = None
-        if self.api_key is not None:
-            headers = {'Api-Key': self.api_key}
+        # Get the SDK method name
+        method_name = method_map.get(data_type)
+        if method_name is None:
+            raise ValueError(f"Unsupported data_type: {data_type}")
 
-        # data request
-        self.data_resp = data_req.get_req(url=url, params=params, headers=headers)
+        # Filter params - remove parameters that SDK methods don't accept
+        # SDK methods don't accept 'pretty', 'ignore_forbidden_errors', 'ignore_unsupported_errors'
+        sdk_params = {k: v for k, v in params.items()
+                      if k not in ['pretty', 'ignore_forbidden_errors', 'ignore_unsupported_errors']}
 
-        # raise error if data is None
-        if self.data_resp is None:
-            raise Exception("Failed to fetch data after multiple attempts.")
-        # retrieve data
-        else:
-            # data
-            data, next_page_url = self.data_resp.get('data', []), self.data_resp.get('next_page_url')
+        # Call the SDK method with params (SDK handles authentication internally)
+        try:
+            sdk_method = getattr(self.client, method_name)
+            resp = sdk_method(**sdk_params)
 
-            # while loop
-            while next_page_url:
-                # wait to avoid exceeding rate limit
-                sleep(data_req.pause)
+            # Convert DataCollection to list
+            if hasattr(resp, 'to_list'):
+                try:
+                    data = resp.to_list()
+                except (TypeError, AttributeError) as pagination_error:
+                    # SDK pagination bug with community API - collect what we can
+                    data = []
+                    try:
+                        for item in resp:
+                            data.append(item)
+                    except (TypeError, AttributeError):
+                        # If even iteration fails, return what we collected
+                        if not data:
+                            raise Exception(f"SDK pagination error and no data collected: {str(pagination_error)}")
+            else:
+                data = resp
 
-                # request next page
-                next_page_data_resp = data_req.get_req(url=next_page_url, params=None, headers=headers)
+        except Exception as e:
+            raise Exception(f"Failed to fetch data from CoinMetrics SDK: {str(e)}")
 
-                # check if response is None (failed after retries)
-                if next_page_data_resp is None:
-                    raise Exception("Failed to fetch paginated data after multiple attempts.")
+        # Convert to DataFrame
+        df = pd.DataFrame(data)
 
-                next_page_data, next_page_url = next_page_data_resp.get('data', []), next_page_data_resp.get(
-                    'next_page_url')
-
-                # add data to list
-                data.extend(next_page_data)
-
-            # convert to df
-            df = pd.DataFrame(data)
-
-            return df
+        return df
 
     def wrangle_data_resp(self, data_req: DataRequest, data_resp: pd.DataFrame()) -> pd.DataFrame():
         """
