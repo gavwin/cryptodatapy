@@ -242,9 +242,8 @@ class TestCryptoCompare:
             "Wrong OHLCV start date."  # start date
         onchain_df = self.cc.get_all_data_hist(self.data_req, 'on-chain', 'BTC')
         assert not onchain_df.empty
-        # Note: CryptoCompare on-chain data availability has changed - now starts around 2020
-        assert pd.to_datetime(onchain_df.time.min(), unit='s') >= pd.Timestamp("2009-01-03"), \
-            "On-chain data should have some historical data available."  # start date
+        assert pd.to_datetime(onchain_df.time.min(), unit='s') <= pd.Timestamp("2009-01-03"), \
+            "Wrong on-chain start date."  # start date
         social_df = self.cc.get_all_data_hist(self.data_req, 'social', 'BTC')
         assert not social_df.empty
         assert pd.to_datetime(social_df.time.min(), unit='s') <= pd.Timestamp("2017-05-26"), \

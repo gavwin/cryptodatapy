@@ -58,7 +58,7 @@ class ConvertParams:
             self.data_req.exch = self.data_req.exch.lower()
 
         # start date
-        if self.data_req.freq[-3:] == "min":  # limit to higher frequency data responses
+        if self.data_req.freq is not None and self.data_req.freq[-3:] == "min":  # limit to higher frequency data responses
             self.data_req.source_start_date = int((datetime.now() - timedelta(days=7)).timestamp())
         elif self.data_req.start_date is None:
             self.data_req.source_start_date = int(pd.Timestamp("2009-01-03 00:00:00").timestamp())
