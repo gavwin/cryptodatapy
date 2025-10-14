@@ -22,46 +22,20 @@ class DataCredentials:
     mongo_db_password: str = None
     mongo_db_name: str = None
 
-    # API keys
-    try:
-        cryptocompare_api_key: str = os.environ['CRYPTOCOMPARE_API_KEY']
-    except KeyError:
-        cryptocompare_api_key: str = None
-    # glassnode api key
-    try:
-        glassnode_api_key: str = os.environ['GLASSNODE_API_KEY']
-    except KeyError:
-        glassnode_api_key: str = None
-    # tiingo api key
-    try:
-        tiingo_api_key: str = os.environ['TIINGO_API_KEY']
-    except KeyError:
-        tiingo_api_key: str = None
-    # alpha vantage api key
-    try:
-        alpha_vantage_api_key: str = os.environ['ALPHAVANTAGE_API_KEY']
-    except KeyError:
-        alpha_vantage_api_key: str = None
-    # polygon api key
-    try:
-        polygon_api_key: str = os.environ['POLYGON_API_KEY']
-    except KeyError:
-        polygon_api_key: str = None
-    # coinmetrics api key
-    try:
-        coinmetrics_api_key: str = os.environ['COINMETRICS_API_KEY']
-    except KeyError:
-        coinmetrics_api_key: str = None
+    # API keys - will be populated at instance initialization
+    cryptocompare_api_key: str = None
+    glassnode_api_key: str = None
+    tiingo_api_key: str = None
+    alpha_vantage_api_key: str = None
+    polygon_api_key: str = None
+    coinmetrics_api_key: str = None
 
     # API base URLs
     cryptocompare_base_url: str = 'https://min-api.cryptocompare.com/data/'
     glassnode_base_url: str = 'https://api.glassnode.com/v1/metrics/'
     tiingo_base_url: str = 'https://api.tiingo.com/tiingo/'
     aqr_base_url: str = 'https://www.aqr.com/-/media/AQR/Documents/Insights/Data-Sets/'
-    if coinmetrics_api_key is not None:
-        coinmetrics_base_url: str = 'https://api.coinmetrics.io/v4'
-    else:
-        coinmetrics_base_url: str = 'https://community-api.coinmetrics.io/v4'
+    coinmetrics_base_url: str = None  # Will be set in __post_init__ based on API key
     polygon_base_url: str = 'https://api.polygon.io/v3/reference/'
 
     # API endpoints
@@ -89,3 +63,34 @@ class DataCredentials:
 
     # search URLs
     dbnomics_search_url: str = "https://db.nomics.world/"
+
+    def __post_init__(self):
+        """
+        Read API keys from environment variables at instance initialization.
+        This ensures keys are loaded when the instance is created, not when the class is defined.
+        """
+        # Read API keys from environment variables if not already set
+        if self.cryptocompare_api_key is None:
+            self.cryptocompare_api_key = os.environ.get('CRYPTOCOMPARE_API_KEY')
+
+        if self.glassnode_api_key is None:
+            self.glassnode_api_key = os.environ.get('GLASSNODE_API_KEY')
+
+        if self.tiingo_api_key is None:
+            self.tiingo_api_key = os.environ.get('TIINGO_API_KEY')
+
+        if self.alpha_vantage_api_key is None:
+            self.alpha_vantage_api_key = os.environ.get('ALPHAVANTAGE_API_KEY')
+
+        if self.polygon_api_key is None:
+            self.polygon_api_key = os.environ.get('POLYGON_API_KEY')
+
+        if self.coinmetrics_api_key is None:
+            self.coinmetrics_api_key = os.environ.get('COINMETRICS_API_KEY')
+
+        # Set CoinMetrics base URL based on whether API key is present
+        if self.coinmetrics_base_url is None:
+            if self.coinmetrics_api_key is not None and self.coinmetrics_api_key != '':
+                self.coinmetrics_base_url = 'https://api.coinmetrics.io/v4'
+            else:
+                self.coinmetrics_base_url = 'https://community-api.coinmetrics.io/v4'
