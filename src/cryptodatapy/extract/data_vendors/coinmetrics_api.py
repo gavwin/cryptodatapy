@@ -214,7 +214,7 @@ class CoinMetrics(DataVendor):
         onchain_fields: list or pd.DataFrame
             List or dataframe of on-chain info.
         """
-        # req data
+        # req data - use reference_data_asset_metrics (replaces deprecated catalog_metrics)
         self.req_meta(data_type='reference_data_asset_metrics')
         # wrangle data resp
         onchain_fields = WrangleInfo(self.data_resp).cm_meta_resp(as_list=as_list, index_name='fields')
@@ -279,22 +279,33 @@ class CoinMetrics(DataVendor):
         # fields info
         self.get_fields_info()
 
-        # fields dict
-        fields_dict = {}
-        for field in self.data_req.source_fields:
-            if field in self.fields.index:
-                df = self.fields.loc[field]  # get fields metadata
-                # add to dict
-                fields_dict[field] = df["frequencies"][0]["assets"]
+        # Check if 'frequencies' column exists in the API response (old schema)
+        if isinstance(self.fields, pd.DataFrame) and 'frequencies' in self.fields.columns:
+            # Old schema - extract assets from frequencies column
+            fields_dict = {}
+            for field in self.data_req.source_fields:
+                if field in self.fields.index:
+                    df = self.fields.loc[field]  # get fields metadata
+                    # add to dict
+                    fields_dict[field] = df["frequencies"][0]["assets"]
 
-        # asset list
-        asset_list = list(set.intersection(*(set(val) for val in fields_dict.values())))
-
-        # return asset list if dict not empty
-        if len(fields_dict) != 0:
-            return asset_list
+            # asset list
+            if len(fields_dict) != 0:
+                asset_list = list(set.intersection(*(set(val) for val in fields_dict.values())))
+                return asset_list
+            else:
+                raise Exception("No fields were found. Check available fields and try again.")
         else:
-            raise Exception("No fields were found. Check available fields and try again.")
+            # New schema - frequencies column no longer exists
+            # Get all available assets and return those in the request
+            self.get_assets_info(as_list=True)
+            # Return intersection of requested tickers and available assets
+            asset_list = [ticker for ticker in self.data_req.source_tickers if ticker in self.assets]
+
+            if len(asset_list) > 0:
+                return asset_list
+            else:
+                raise Exception("No assets found for the requested tickers. Check available assets and try again.")
 
     def get_rate_limit_info(self) -> None:
         """
@@ -338,8 +349,13 @@ class CoinMetrics(DataVendor):
         # url
         url = self.base_url + data_type
 
+        # headers with API key
+        headers = None
+        if self.api_key is not None:
+            headers = {'Api-Key': self.api_key}
+
         # data request
-        self.data_resp = data_req.get_req(url=url, params=params)
+        self.data_resp = data_req.get_req(url=url, params=params, headers=headers)
 
         # raise error if data is None
         if self.data_resp is None:
@@ -355,7 +371,7 @@ class CoinMetrics(DataVendor):
                 sleep(data_req.pause)
 
                 # request next page
-                next_page_data_resp = data_req.get_req(url=next_page_url, params=None)
+                next_page_data_resp = data_req.get_req(url=next_page_url, params=None, headers=headers)
 
                 # check if response is None (failed after retries)
                 if next_page_data_resp is None:
