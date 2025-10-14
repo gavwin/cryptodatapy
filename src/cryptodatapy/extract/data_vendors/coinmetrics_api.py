@@ -11,10 +11,7 @@ from cryptodatapy.transform.convertparams import ConvertParams
 from cryptodatapy.transform.wrangle import WrangleData, WrangleInfo
 from cryptodatapy.util.datacredentials import DataCredentials
 
-# data credentials
-data_cred = DataCredentials()
-
-# CoinMetrics community API client:
+# CoinMetrics community API client (deprecated - use instance client instead):
 client = CoinMetricsClient()
 
 
@@ -34,9 +31,9 @@ class CoinMetrics(DataVendor):
             fields: Optional[List[str]] = None,
             frequencies: List[str] = ["tick", "block", "1s", "1min", "5min", "10min", "15min", "30min",
                                       "1h", "2h", "4h", "8h", "d", "w", "m", "q"],
-            base_url: Optional[str] = data_cred.coinmetrics_base_url,
+            base_url: Optional[str] = None,
             api_endpoints: Optional[Dict[str, str]] = None,
-            api_key: Optional[str] = data_cred.coinmetrics_api_key,
+            api_key: Optional[str] = None,
             max_obs_per_call: Optional[int] = None,
             rate_limit: Optional[Any] = None,
     ):
@@ -75,6 +72,15 @@ class CoinMetrics(DataVendor):
         rate_limit: Any, optional, Default None
             Number of API calls made and left, by time frequency.
         """
+        # Create a fresh DataCredentials instance to get current environment variables
+        data_cred = DataCredentials()
+
+        # Use DataCredentials defaults if parameters not provided
+        if base_url is None:
+            base_url = data_cred.coinmetrics_base_url
+        if api_key is None:
+            api_key = data_cred.coinmetrics_api_key
+
         super().__init__(
             categories, exchanges, indexes, assets, markets, market_types,
             fields, frequencies, base_url, api_endpoints, api_key, max_obs_per_call, rate_limit
