@@ -79,6 +79,8 @@ class CoinMetrics(DataVendor):
             categories, exchanges, indexes, assets, markets, market_types,
             fields, frequencies, base_url, api_endpoints, api_key, max_obs_per_call, rate_limit
         )
+        # Initialize client with API key for metadata requests
+        self.client = CoinMetricsClient(api_key=self.api_key) if self.api_key else CoinMetricsClient()
         self.data_req = None
         self.data_resp = None
         self.data = pd.DataFrame()
@@ -99,7 +101,7 @@ class CoinMetrics(DataVendor):
             Object with metadata.
         """
         try:
-            resp = getattr(client, data_type)()
+            resp = getattr(self.client, data_type)()
             # For reference_data endpoints, convert DataCollection to list
             if data_type.startswith('reference_data_') or data_type.startswith('catalog_') and data_type.endswith('_v2'):
                 if hasattr(resp, 'to_list'):
