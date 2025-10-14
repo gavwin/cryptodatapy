@@ -48,11 +48,11 @@ class TestCoinMetrics:
 
         # data type
         assert isinstance(exch_info, pd.DataFrame), "Exchanges info should be a dataframe."
-        # shape
-        assert exch_info.shape[1] == 3, "Exchanges info should have 3 columns."
+        # shape - reference_data_exchanges returns 1 column (updated schema)
+        assert exch_info.shape[1] == 1, "Exchanges info should have 1 column."
         # columns
-        assert all(exch_info.columns == ['markets', 'min_time', 'max_time']), \
-            "Exchanges info should have 'markets', 'min_time', 'max_time' columns."
+        assert 'full_name' in exch_info.columns, \
+            "Exchanges info should have 'full_name' column."
         # index
         assert exch_info.index.name == 'exchange', "Exchanges info should have 'exchange' as index name."
         assert 'binance' in exch_info.index, "Exchanges info should have 'binance' as index."
@@ -66,8 +66,8 @@ class TestCoinMetrics:
 
         # data type
         assert isinstance(idx_info, pd.DataFrame), "Indexes info should be a dataframe."
-        # shape
-        assert idx_info.shape[1] == 4, "Indexes info should have 4 columns."
+        # shape - reference_data_indexes returns 3 columns (updated schema)
+        assert idx_info.shape[1] == 3, "Indexes info should have 3 columns."
         # columns
         assert 'description' in idx_info.columns, "Indexes info should have 'description' column."
         # index
@@ -83,10 +83,10 @@ class TestCoinMetrics:
 
         # data type
         assert isinstance(assets_info, pd.DataFrame), "Assets info should be a dataframe."
-        # shape
-        assert assets_info.shape[1] == 6, "Assets info should have 6 columns."
+        # shape - reference_data_assets returns 1 column (updated schema)
+        assert assets_info.shape[1] == 1, "Assets info should have 1 column."
         # columns
-        assert 'metrics' in assets_info.columns, "Assets info should have 'metrics' column."
+        assert 'full_name' in assets_info.columns, "Assets info should have 'full_name' column."
         # index
         assert assets_info.index.name == 'ticker', "Assets info should have 'ticker' as index name."
         assert 'btc' in assets_info.index, "Assets info should have 'btc' as index."

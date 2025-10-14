@@ -89,8 +89,8 @@ class CoinMetrics(DataVendor):
 
         Parameters
         ----------
-        data_type: str, {'catalog_exchanges', 'catalog_indexes', 'catalog_assets', 'catalog_institutions',
-                         'catalog_markets', 'reference_data_asset_metrics' }
+        data_type: str, {'reference_data_exchanges', 'reference_data_indexes', 'reference_data_assets',
+                         'reference_data_markets', 'reference_data_asset_metrics' }
             Type of data to request metadata for.
 
         Returns
@@ -131,7 +131,7 @@ class CoinMetrics(DataVendor):
             List or dataframe with info on supported exchanges.
         """
         # req data
-        self.req_meta(data_type='catalog_exchanges')
+        self.req_meta(data_type='reference_data_exchanges')
         # wrangle data resp
         self.exchanges = WrangleInfo(self.data_resp).cm_meta_resp(as_list=as_list, index_name='exchange')
 
@@ -152,7 +152,7 @@ class CoinMetrics(DataVendor):
             List or dataframe with info on available indexes.
         """
         # req data
-        self.req_meta(data_type='catalog_indexes')
+        self.req_meta(data_type='reference_data_indexes')
         # wrangle data resp
         self.indexes = WrangleInfo(self.data_resp).cm_meta_resp(as_list=as_list, index_name='ticker')
 
@@ -173,7 +173,7 @@ class CoinMetrics(DataVendor):
             List or dataframe with info on available assets.
         """
         # req data
-        self.req_meta(data_type='catalog_assets')
+        self.req_meta(data_type='reference_data_assets')
         # wrangle data resp
         self.assets = WrangleInfo(self.data_resp).cm_meta_resp(as_list=as_list, index_name='ticker')
 
@@ -194,7 +194,7 @@ class CoinMetrics(DataVendor):
             List or dataframe with info on available markets, by exchange.
         """
         # req data
-        self.req_meta(data_type='catalog_markets')
+        self.req_meta(data_type='reference_data_markets')
         # wrangle data resp
         self.markets = WrangleInfo(self.data_resp).cm_meta_resp(as_list=as_list)
 
