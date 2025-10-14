@@ -1,15 +1,34 @@
 from datetime import datetime
+import os
 import pandas as pd
 import pytest
 from time import sleep
 
 from cryptodatapy.extract.data_vendors.coinmetrics_api import CoinMetrics
 from cryptodatapy.extract.datarequest import DataRequest
+from cryptodatapy.util.datacredentials import DataCredentials
 
 
 @pytest.fixture
 def data_req():
     return DataRequest(tickers=['btc', 'eth', 'sol'], fields=["add_act", "tx_count", "close"])
+
+
+# Check if API key is available
+def has_coinmetrics_api_key():
+    """Check if CoinMetrics API key is available for testing."""
+    try:
+        creds = DataCredentials()
+        return creds.coinmetrics_api_key is not None and creds.coinmetrics_api_key != ''
+    except:
+        return False
+
+
+# Pytest mark for tests requiring API credentials
+requires_api_key = pytest.mark.skipif(
+    not has_coinmetrics_api_key(),
+    reason="CoinMetrics API key not available"
+)
 
 
 class TestCoinMetrics:
@@ -81,8 +100,8 @@ class TestCoinMetrics:
 
         # data type
         assert isinstance(markets_info, pd.DataFrame), "Markets info should be a dataframe."
-        # shape
-        assert markets_info.shape[1] == 33, "Markets info should have 33 columns."
+        # shape - API now returns 30 columns (updated schema)
+        assert markets_info.shape[1] >= 30, "Markets info should have at least 30 columns."
         # columns
         assert 'exchange' in markets_info.columns, "Markets info should have 'exchange' column."
         # index
@@ -98,8 +117,8 @@ class TestCoinMetrics:
 
         # data type
         assert isinstance(fields_info, pd.DataFrame), "Fields info should be a dataframe."
-        # shape
-        assert fields_info.shape[1] == 10, "Fields info should have 10 columns."
+        # shape - API now returns 14 columns (updated schema)
+        assert fields_info.shape[1] >= 10, "Fields info should have at least 10 columns."
         # columns
         assert 'category' in fields_info.columns, "Fields info should have 'category' column."
         # index
@@ -115,8 +134,8 @@ class TestCoinMetrics:
 
         # data type
         assert isinstance(onchain_fields_info, pd.DataFrame), "Onchain fields info should be a dataframe."
-        # shape
-        assert onchain_fields_info.shape[1] == 10, "Onchain fields info should have 10 columns."
+        # shape - API now returns 14 columns (updated schema)
+        assert onchain_fields_info.shape[1] >= 10, "Onchain fields info should have at least 10 columns."
         # columns
         assert 'category' in onchain_fields_info.columns, "Onchain fields info should have 'category' column."
         # index
@@ -151,6 +170,7 @@ class TestCoinMetrics:
         assert isinstance(self.cm.frequencies, list), "Frequencies should be a list."
         assert isinstance(self.cm.market_types, list), "Market types should be a list."
 
+    @requires_api_key
     def test_req_data(self, data_req):
         """
         Test req_data method.
@@ -176,6 +196,7 @@ class TestCoinMetrics:
         # shape
         assert df.shape[1] == 10, "Dataframe should have 10 columns."
 
+    @requires_api_key
     def test_wrangle_data_resp(self, data_req):
         """
         Test wrangle_data_resp method.
@@ -202,6 +223,7 @@ class TestCoinMetrics:
         # shape
         assert df.shape[1] == 6, "Dataframe should have 6 columns."
 
+    @requires_api_key
     def test_get_tidy_data(self, data_req):
         """
         Test get_tidy_data method.
@@ -265,6 +287,7 @@ class TestCoinMetrics:
         with pytest.raises(ValueError):
             self.cm.check_params(dr, data_type='funding_rates')
 
+    @requires_api_key
     def test_indexes(self):
         """
         Test indexes method.
@@ -287,6 +310,7 @@ class TestCoinMetrics:
         # shape
         assert df.shape[1] == 1, "Dataframe should have 1 column."
 
+    @requires_api_key
     def test_get_ohlcv(self, data_req):
         """
         Test get_ohlcv method.
@@ -310,6 +334,7 @@ class TestCoinMetrics:
         # shape
         assert df.shape[1] == 6, "Dataframe should have 1 column."
 
+    @requires_api_key
     def test_get_onchain(self, data_req):
         """
         Test get_onchain method.
@@ -331,6 +356,7 @@ class TestCoinMetrics:
         # shape
         assert df.shape[1] == 2, "Dataframe should have 2 columns."
 
+    @requires_api_key
     def test_get_open_interest(self, data_req):
         """
         Test get_open_interest method.
@@ -353,6 +379,7 @@ class TestCoinMetrics:
         # shape
         assert df.shape[1] == 1, "Dataframe should have 1 column."
 
+    @requires_api_key
     def test_get_funding_rates(self, data_req):
         """
         Test get_funding_rates method.
@@ -375,6 +402,7 @@ class TestCoinMetrics:
         # shape
         assert df.shape[1] == 1, "Dataframe should have 1 column."
 
+    @requires_api_key
     def test_get_trades(self):
         """
         Test get_trades method.
@@ -401,6 +429,7 @@ class TestCoinMetrics:
         # tickers
         assert set(df.index.droplevel(0).unique()) == {'BTC', 'ETH'}, "Tickers are missing from dataframe."
 
+    @requires_api_key
     def test_get_quotes(self):
         """
         Test get_quotes method.
@@ -427,6 +456,7 @@ class TestCoinMetrics:
         # tickers
         assert set(df.index.droplevel(0).unique()) == {'BTC', 'ETH'}, "Tickers are missing from dataframe."
 
+    @requires_api_key
     def test_get_data(self, data_req):
         """
         Test get_data method.
