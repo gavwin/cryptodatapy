@@ -474,14 +474,23 @@ class WrangleInfo:
         # Check if the list contains strings (new API format) or dicts (old format)
         if len(data) > 0 and isinstance(data[0], str):
             # New API format: list of path strings like '/v1/metrics/addresses/count'
-            # Simply return the list of paths as field names
+            # Extract field names by removing '/v1/metrics/' prefix
+            field_paths = []
+            for path in data:
+                # Remove '/v1/metrics/' prefix to get field name like 'addresses/count'
+                if path.startswith('/v1/metrics/'):
+                    field_name = path.replace('/v1/metrics/', '')
+                    field_paths.append(field_name)
+                else:
+                    # Fallback: just use the path as-is
+                    field_paths.append(path)
+
             if as_list:
-                # Return just the field paths
-                return data
+                # Return the cleaned field paths
+                return field_paths
             else:
-                # Create a simple DataFrame with just the paths
-                fields = pd.DataFrame({'path': data})
-                fields['fields'] = fields.path.str.split(pat='/', expand=True, n=3)[3]
+                # Create a simple DataFrame with the field paths
+                fields = pd.DataFrame({'path': data, 'fields': field_paths})
                 fields.set_index('fields', inplace=True)
                 return fields
 
