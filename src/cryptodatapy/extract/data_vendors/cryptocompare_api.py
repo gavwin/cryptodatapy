@@ -29,9 +29,9 @@ class CryptoCompare(DataVendor):
             market_types: List[str] = ['spot'],
             fields: Optional[list[str]] = None,
             frequencies: List[str] = ['1min', '1h', 'd'],
-            base_url: str = data_cred.cryptocompare_base_url,
-            api_endpoints: Dict[str, str] = data_cred.cryptomcompare_endpoints,
-            api_key: str = data_cred.cryptocompare_api_key,
+            base_url: Optional[str] = None,
+            api_endpoints: Optional[Dict[str, str]] = None,
+            api_key: Optional[str] = None,
             max_obs_per_call: int = 2000,
             rate_limit: Optional[pd.DataFrame] = None
     ):
@@ -57,12 +57,12 @@ class CryptoCompare(DataVendor):
         frequencies: list
             List of available frequencies, e.g. ['tick', '1min', '5min', '10min', '20min', '30min', '1h', '2h', '4h',
             '8h', 'd', 'w', 'm']
-        base_url: str
+        base_url: str, optional, default None
             Base url used for GET requests. If not provided, default is set to base_url stored in DataCredentials.
         api_endpoints: dict, optional, default None
             Dictionary with available API endpoints. If not provided, default is set to api_endpoints stored in
             DataCredentials.
-        api_key: str
+        api_key: str, optional, default None
             Api key, e.g. 'dcf13983adf7dfa79a0dfa35adf'. If not provided, default is set to
             api_key stored in DataCredentials.
         max_obs_per_call: int, default 2,000
@@ -71,11 +71,22 @@ class CryptoCompare(DataVendor):
         rate_limit: pd.DataFrame, optional, Default None
             Number of API calls made and left, by time frequency.
         """
+        # Create a fresh DataCredentials instance to get current environment variables
+        data_cred = DataCredentials()
+
+        # Use DataCredentials defaults if parameters not provided
+        if base_url is None:
+            base_url = data_cred.cryptocompare_base_url
+        if api_endpoints is None:
+            api_endpoints = data_cred.cryptomcompare_endpoints
+        if api_key is None:
+            api_key = data_cred.cryptocompare_api_key
+
         super().__init__(
             categories, exchanges, indexes, assets, markets, market_types,
             fields, frequencies, base_url, api_endpoints, api_key, max_obs_per_call, rate_limit
         )
-        if api_key is None:
+        if self.api_key is None:
             raise TypeError("Set your CryptoCompare api key in environment variables as 'CRYPTOCOMPARE_API_KEY' or "
                             "add it as an argument when instantiating the class. To get an api key, visit: "
                             "https://min-api.cryptocompare.com/")

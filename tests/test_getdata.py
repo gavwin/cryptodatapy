@@ -131,6 +131,7 @@ def test_integration_get_data_ccxt(data_req_ccxt) -> None:
 def test_integration_get_meta_cm(data_req_cm) -> None:
     """
     Test integration of get metadata for CoinMetrics
+    Note: CoinMetrics API v4 no longer returns 'metrics' field in assets info
     """
     meta = GetData(data_req_cm).get_meta(method="get_assets_info")
     assert not meta.empty, "Dataframe was returned empty."  # non empty
@@ -138,9 +139,8 @@ def test_integration_get_meta_cm(data_req_cm) -> None:
     assert (
         meta.loc["btc", "full_name"] == "Bitcoin"
     ), "Bitcoin name is incorrect."  # assets
-    assert (
-        meta.loc["eth", "metrics"][0]["frequencies"][0]["frequency"] == "1d"
-    ), "ETH metrics are incorrect."  # metrics
+    # Note: 'metrics' field no longer exists in API v4 assets response
+    # Use reference_data_asset_metrics endpoint instead for metrics metadata
     data_req = DataRequest(
         source="coinmetrics",
         start_date="2000-01-01",

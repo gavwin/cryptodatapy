@@ -32,8 +32,8 @@ class Glassnode(DataVendor):
             market_types=None,
             fields: Optional[list[str]] = None,
             frequencies=None,
-            base_url: str = data_cred.glassnode_base_url,
-            api_key: str = data_cred.glassnode_api_key,
+            base_url: Optional[str] = None,
+            api_key: Optional[str] = None,
             max_obs_per_call: Optional[int] = None,
             rate_limit: Optional[Any] = None
     ):
@@ -59,9 +59,9 @@ class Glassnode(DataVendor):
         frequencies: list
             List of available frequencies, e.g. ['tick', '1min', '5min', '10min', '20min', '30min', '1h', '2h', '4h',
             '8h', 'd', 'w', 'm']
-        base_url: str
+        base_url: str, optional, default None
             Base url used for GET requests. If not provided, default is set to base_url stored in DataCredentials.
-        api_key: str
+        api_key: str, optional, default None
             Api key, e.g. 'dcf13983adf7dfa79a0dfa35adf'. If not provided, default is set to
             api_key stored in DataCredentials.
         max_obs_per_call: int, optional, default None
@@ -70,6 +70,15 @@ class Glassnode(DataVendor):
         rate_limit: Any, optional, Default None
             Number of API calls made and left, by time frequency.
         """
+        # Create a fresh DataCredentials instance to get current environment variables
+        data_cred = DataCredentials()
+
+        # Use DataCredentials defaults if parameters not provided
+        if base_url is None:
+            base_url = data_cred.glassnode_base_url
+        if api_key is None:
+            api_key = data_cred.glassnode_api_key
+
         DataVendor.__init__(self, categories, exchanges, assets, indexes, markets, market_types, fields,
                             frequencies, base_url, None, api_key, max_obs_per_call, rate_limit)
 
@@ -79,7 +88,7 @@ class Glassnode(DataVendor):
             self.market_types = ['spot', 'perpetual_future', 'future', 'option']
         if categories is None:
             self.categories = ['crypto']
-        if api_key is None:
+        if self.api_key is None:
             raise TypeError("Set your Glassnode api key in environment variables as 'GLASSNODE_API_KEY' or "
                             "add it as an argument when instantiating the class. To get an api key, visit: "
                             "https://docs.glassnode.com/basic-api/api-key")
