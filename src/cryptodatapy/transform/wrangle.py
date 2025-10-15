@@ -473,17 +473,22 @@ class WrangleInfo:
 
         # Check if the list contains strings (new API format) or dicts (old format)
         if len(data) > 0 and isinstance(data[0], str):
-            # New API format: list of path strings like '/v1/metrics/addresses/count'
-            # Extract field names by removing '/v1/metrics/' prefix
+            # New API format: list of path strings
+            # Could be '/v1/metrics/addresses/count' or '/addresses/count'
+            # Extract field names by removing prefixes
             field_paths = []
             for path in data:
-                # Remove '/v1/metrics/' prefix to get field name like 'addresses/count'
+                # Remove '/v1/metrics/' prefix if present
                 if path.startswith('/v1/metrics/'):
                     field_name = path.replace('/v1/metrics/', '')
-                    field_paths.append(field_name)
                 else:
-                    # Fallback: just use the path as-is
-                    field_paths.append(path)
+                    field_name = path
+
+                # Remove leading slash if present
+                if field_name.startswith('/'):
+                    field_name = field_name[1:]
+
+                field_paths.append(field_name)
 
             if as_list:
                 # Return the cleaned field paths
