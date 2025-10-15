@@ -451,15 +451,15 @@ class WrangleInfo:
 
         """
         # Handle API response format
-        # Note: Glassnode is inconsistent - assets endpoint returns {'data': [...]}
-        # but fields/metrics endpoint returns [...] directly
+        # Note: Glassnode API has changed - it now returns a simple list of path strings
+        # instead of a list of dicts with metadata (tier, assets, etc.)
         data = self.data_resp
 
         # If it's a dict with 'data' key, extract the nested data
         if isinstance(data, dict) and 'data' in data:
             data = data['data']
 
-        # Ensure data is a list (API returns list of dicts)
+        # Ensure data is a list
         if not isinstance(data, list):
             if as_list:
                 return []
@@ -471,7 +471,21 @@ class WrangleInfo:
                 return []
             return pd.DataFrame()
 
-        # format response - create DataFrame from list of dicts
+        # Check if the list contains strings (new API format) or dicts (old format)
+        if len(data) > 0 and isinstance(data[0], str):
+            # New API format: list of path strings like '/v1/metrics/addresses/count'
+            # Simply return the list of paths as field names
+            if as_list:
+                # Return just the field paths
+                return data
+            else:
+                # Create a simple DataFrame with just the paths
+                fields = pd.DataFrame({'path': data})
+                fields['fields'] = fields.path.str.split(pat='/', expand=True, n=3)[3]
+                fields.set_index('fields', inplace=True)
+                return fields
+
+        # Old API format: list of dicts with 'path', 'tier', 'assets', etc.
         fields = pd.DataFrame(data)
 
         # Check if dataframe is empty or missing required columns
@@ -484,20 +498,26 @@ class WrangleInfo:
         fields['fields'] = fields.path.str.split(pat='/', expand=True, n=3)[3]
         fields['categories'] = fields.path.str.split(pat='/', expand=True)[3]
         # rename and reorder cols, and set index
-        fields.rename(columns={'resolutions': 'frequencies'}, inplace=True)
-        fields = fields.loc[:, ['fields', 'categories', 'tier', 'assets', 'currencies', 'frequencies', 'formats',
-                                'path']]
+        if 'resolutions' in fields.columns:
+            fields.rename(columns={'resolutions': 'frequencies'}, inplace=True)
+
+        # Only select columns that exist
+        available_cols = ['fields', 'categories']
+        for col in ['tier', 'assets', 'currencies', 'frequencies', 'formats', 'path']:
+            if col in fields.columns:
+                available_cols.append(col)
+        fields = fields.loc[:, available_cols]
         fields.set_index('fields', inplace=True)
 
         # filter fields info
-        if data_type == 'market':
-            fields = fields[(fields.categories == 'market') | (fields.categories == 'derivatives')]
-        elif data_type == 'on-chain':
-            fields = fields[(fields.categories != 'market') | (fields.categories != 'derivatives')]
-        elif data_type == 'off-chain':
-            fields = fields[fields.categories == 'institutions']
-        else:
-            fields = fields
+        if 'categories' in fields.columns:
+            if data_type == 'market':
+                fields = fields[(fields.categories == 'market') | (fields.categories == 'derivatives')]
+            elif data_type == 'on-chain':
+                fields = fields[(fields.categories != 'market') | (fields.categories != 'derivatives')]
+            elif data_type == 'off-chain':
+                fields = fields[fields.categories == 'institutions']
+
         # fields list
         if as_list:
             fields = list(fields.index)
