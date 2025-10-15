@@ -410,8 +410,13 @@ class WrangleInfo:
             Assets info converted to dataframe or list.
 
         """
+        # Handle new API response format where data is nested under 'data' key
+        data = self.data_resp
+        if isinstance(data, dict) and 'data' in data:
+            data = data['data']
+
         # format response
-        assets = pd.DataFrame(self.data_resp)
+        assets = pd.DataFrame(data)
 
         # Check if dataframe is empty or missing required columns
         if assets.empty or 'symbol' not in assets.columns:
@@ -445,8 +450,13 @@ class WrangleInfo:
             List or dataframe with info on available fields.
 
         """
+        # Handle new API response format where data is nested under 'data' key
+        data = self.data_resp
+        if isinstance(data, dict) and 'data' in data:
+            data = data['data']
+
         # format response
-        fields = pd.DataFrame(self.data_resp)
+        fields = pd.DataFrame(data)
 
         # Check if dataframe is empty or missing required columns
         if fields.empty or 'path' not in fields.columns:
