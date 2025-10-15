@@ -559,6 +559,30 @@ class WrangleData:
         self.data_resp = data_resp
         self.tidy_data = pd.DataFrame()
 
+    @staticmethod
+    def convert_freq_to_pandas(freq: str) -> str:
+        """
+        Convert CryptoDataPy frequency strings to pandas 2.x resample frequency strings.
+
+        Parameters
+        ----------
+        freq: str
+            Frequency string in CryptoDataPy format.
+
+        Returns
+        -------
+        str
+            Frequency string compatible with pandas 2.x resample.
+        """
+        freq_mapping = {
+            'm': 'ME',  # month-end (was 'M' in pandas <2.2)
+            'q': 'QE',  # quarter-end (was 'Q' in pandas <2.2)
+            'y': 'YE',  # year-end (was 'Y' in pandas <2.2)
+            'w': 'W',   # week (unchanged)
+            'd': 'D',   # day (unchanged, but explicit)
+        }
+        return freq_mapping.get(freq, freq)
+
     def cryptocompare(self) -> pd.DataFrame:
         """
         Wrangles CryptoCompare data response to dataframe with tidy data format.
@@ -1001,13 +1025,16 @@ class WrangleData:
         # tickers
         self.data_resp.columns = self.data_req.tickers  # convert tickers to cryptodatapy format
 
+        # convert frequency to pandas 2.x format
+        pandas_freq = self.convert_freq_to_pandas(self.data_req.freq)
+
         # resample to match end of reporting period, not beginning
         self.data_resp = (
             self.data_resp
-            .resample('d')
+            .resample('D')
             .last()
             .ffill()
-            .resample(self.data_req.freq)
+            .resample(pandas_freq)
             .last()
             .stack(future_stack=True)
             .to_frame()
