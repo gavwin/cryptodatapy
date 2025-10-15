@@ -450,12 +450,28 @@ class WrangleInfo:
             List or dataframe with info on available fields.
 
         """
-        # Handle new API response format where data is nested under 'data' key
+        # Handle API response format
+        # Note: Glassnode is inconsistent - assets endpoint returns {'data': [...]}
+        # but fields/metrics endpoint returns [...] directly
         data = self.data_resp
+
+        # If it's a dict with 'data' key, extract the nested data
         if isinstance(data, dict) and 'data' in data:
             data = data['data']
 
-        # format response
+        # Ensure data is a list (API returns list of dicts)
+        if not isinstance(data, list):
+            if as_list:
+                return []
+            return pd.DataFrame()
+
+        # Check if list is empty
+        if len(data) == 0:
+            if as_list:
+                return []
+            return pd.DataFrame()
+
+        # format response - create DataFrame from list of dicts
         fields = pd.DataFrame(data)
 
         # Check if dataframe is empty or missing required columns
