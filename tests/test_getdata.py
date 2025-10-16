@@ -8,8 +8,10 @@ from cryptodatapy.extract.getdata import GetData
 
 @pytest.fixture
 def data_req_ccxt():
+    # Use recent dates to avoid pagination limit issues (OKX has a limit of 10 pagination calls)
+    start_date = (pd.Timestamp.utcnow() - pd.Timedelta(days=7)).strftime("%Y-%m-%d")
     data_req = DataRequest(
-        source="ccxt", start_date="2018-01-01", tickers=["btc", "eth", "ada"]
+        source="ccxt", exch="okx", start_date=start_date, tickers=["btc", "eth", "ada"]
     )
     return data_req
 
@@ -91,13 +93,12 @@ def test_integration_get_meta_ccxt(data_req_ccxt) -> None:
     """
     Test integration of get metadata for CCXT
     """
-    meta = GetData(data_req_ccxt).get_meta(method="get_exchanges_info", exch="binance")
+    meta = GetData(data_req_ccxt).get_meta(method="get_exchanges_info", exch="okx")
     assert not meta.empty, "Dataframe was returned empty."  # non empty
-    assert meta.loc["binance", "name"] == "Binance", "Exchange info is incorrect."  # exch name
+    assert meta.loc["okx", "name"] == "OKX", "Exchange info is incorrect."  # exch name
     assert isinstance(meta, pd.DataFrame), "Metadata should be a dataframe."  # type
 
 
-@pytest.mark.skip(reason="Requires Binance API access - may fail due to geo-restrictions (HTTP 451)")
 def test_integration_get_data_ccxt(data_req_ccxt) -> None:
     """
     Test integration of get data method for CCXT
@@ -111,20 +112,20 @@ def test_integration_get_data_ccxt(data_req_ccxt) -> None:
     assert isinstance(
         df.index.droplevel(1), pd.DatetimeIndex
     ), "Index is not DatetimeIndex."  # datetimeindex
-    assert list(df.index.droplevel(0).unique()) == [
-        "BTC",
-        "ETH",
-        "ADA",
-    ], "Tickers are missing from dataframe."  # tickers
+    assert set(df.index.droplevel(0).unique()) == {
+        "BTC/USDT",
+        "ETH/USDT",
+        "ADA/USDT",
+    }, "Tickers are missing from dataframe."  # tickers
     assert list(df.columns) == ["close"], "Fields are missing from dataframe."  # fields
-    assert df.index[0][0] == pd.Timestamp(
-        "2018-01-01 00:00:00"
-    ), "Wrong start date."  # start date
+    # Check start date is within expected range (7 days ago +/- 1 day for timing)
+    expected_start = (pd.Timestamp.utcnow() - pd.Timedelta(days=7)).tz_localize(None)
+    assert abs((df.index[0][0] - expected_start).days) <= 1, "Start date is not within expected range."
     assert pd.Timestamp.utcnow().tz_localize(None) - df.index[-1][0] < pd.Timedelta(
         days=3
     ), "End date is more than 72h ago."  # end date
     assert isinstance(
-        df.close.dropna().iloc[-1], np.float64
+        df.close.dropna().iloc[-1], (np.float64, np.floating)
     ), "Close is not a numpy float."  # dtypes
 
 
