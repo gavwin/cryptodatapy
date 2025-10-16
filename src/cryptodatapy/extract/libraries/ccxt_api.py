@@ -1,11 +1,12 @@
-import logging
-from typing import Any, Dict, List, Optional, Union
-import pandas as pd
 import asyncio
+import logging
 import random
 from time import sleep
+from typing import Any, Dict, List, Optional, Union
+
 import ccxt
 import ccxt.async_support as ccxt_async
+import pandas as pd
 from tqdm.asyncio import tqdm
 
 from cryptodatapy.extract.datarequest import DataRequest
@@ -17,6 +18,9 @@ from cryptodatapy.util.datacredentials import DataCredentials
 # data credentials
 data_cred = DataCredentials()
 
+# don't support binance due to georestrictions
+supported_exchanges = [exch for exch in ccxt.exchanges if exch not in ["binance", "binancecoinm"]]
+
 
 class CCXT(Library):
     """
@@ -24,19 +28,27 @@ class CCXT(Library):
     """
 
     def __init__(
-            self,
-            categories: Union[str, List[str]] = "crypto",
-            exchanges: Optional[List[str]] = None,
-            indexes: Optional[List[str]] = None,
-            assets: Optional[Dict[str, List[str]]] = None,
-            markets: Optional[Dict[str, List[str]]] = None,
-            market_types: List[str] = ["spot", "future", "perpetual_future", "option"],
-            fields: Optional[List[str]] = ["open", "high", "low", "close", "volume", "funding_rate", 'oi'],
-            frequencies: Optional[Dict[str, Union[str, int]]] = None,
-            base_url: Optional[str] = None,
-            api_key: Optional[str] = None,
-            max_obs_per_call: Optional[int] = 1000,
-            rate_limit: Optional[Any] = None,
+        self,
+        categories: Union[str, List[str]] = "crypto",
+        exchanges: Optional[List[str]] = None,
+        indexes: Optional[List[str]] = None,
+        assets: Optional[Dict[str, List[str]]] = None,
+        markets: Optional[Dict[str, List[str]]] = None,
+        market_types: List[str] = ["spot", "future", "perpetual_future", "option"],
+        fields: Optional[List[str]] = [
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "funding_rate",
+            "oi",
+        ],
+        frequencies: Optional[Dict[str, Union[str, int]]] = None,
+        base_url: Optional[str] = None,
+        api_key: Optional[str] = None,
+        max_obs_per_call: Optional[int] = 1000,
+        rate_limit: Optional[Any] = None,
     ):
         """
         Constructor
@@ -46,11 +58,11 @@ class CCXT(Library):
         categories: list or str, {'crypto', 'fx', 'rates', 'eqty', 'commodities', 'credit', 'macro', 'alt'}
             List or string of available categories, e.g. ['crypto', 'fx', 'alt'].
         exchanges: list, optional, default None
-            List of available exchanges, e.g. ['Binance', 'Coinbase', 'Kraken', 'FTX', ...].
+            List of available exchanges, e.g. ['Coinbase', 'Gemini', 'Kraken', ...].
         indexes: list, optional, default None
             List of available indexes, e.g. ['mvda', 'bvin'].
         assets: dictionary, optional, default None
-            Dictionary of available assets, by exchange-assets key-value pairs, e.g. {'ftx': 'btc', 'eth', ...}.
+            Dictionary of available assets, by exchange-assets key-value pairs, e.g. {'sol': 'btc', 'eth', ...}.
         markets: dictionary, optional, default None
             Dictionary of available markets as base asset/quote currency pairs, by exchange-markets key-value pairs,
              e.g. {'kraken': btcusdt', 'ethbtc', ...}.
@@ -73,8 +85,18 @@ class CCXT(Library):
             Number of API calls made and left, by time frequency.
         """
         super().__init__(
-            categories, exchanges, indexes, assets, markets, market_types,
-            fields, frequencies, base_url, api_key, max_obs_per_call, rate_limit
+            categories,
+            exchanges,
+            indexes,
+            assets,
+            markets,
+            market_types,
+            fields,
+            frequencies,
+            base_url,
+            api_key,
+            max_obs_per_call,
+            rate_limit,
         )
         self.exchange = None
         self.exchange_async = None
@@ -82,12 +104,14 @@ class CCXT(Library):
         self.data_resp = []
         self.data = pd.DataFrame()
 
-    def get_exchanges_info(self, exch: Optional[str] = None) -> Union[List[str], pd.DataFrame]:
+    def get_exchanges_info(
+        self, exch: Optional[str] = None
+    ) -> Union[List[str], pd.DataFrame]:
         """
         Get exchanges info.
 
         Parameters
-        ----------
+        -------
         exch: str, optional, default None
             Name of exchange to get detailed info for. If None, returns list of all exchanges.
 
@@ -97,11 +121,11 @@ class CCXT(Library):
             List of all supported exchanges, or DataFrame with detailed info for specific exchange.
         """
         if self.exchanges is None:
-            self.exchanges = ccxt.exchanges
+            self.exchanges = supported_exchanges
 
         # If exch parameter provided, return detailed info for that exchange as DataFrame
         if exch is not None:
-            if exch not in ccxt.exchanges:
+            if exch not in supported_exchanges:
                 raise ValueError(
                     f"{exch} is not a supported exchange. "
                     f"Use get_exchanges_info() without parameters to get a list of supported exchanges."
@@ -111,14 +135,17 @@ class CCXT(Library):
             exchange_obj = getattr(ccxt, exch)()
 
             # Create DataFrame with exchange info
-            exch_info = pd.DataFrame({
-                'name': [exchange_obj.name],
-                'id': [exchange_obj.id],
-                'countries': [exchange_obj.countries],
-                'has': [exchange_obj.has],
-                'rateLimit': [exchange_obj.rateLimit]
-            }, index=[exch])
-            exch_info.index.name = 'exchange'
+            exch_info = pd.DataFrame(
+                {
+                    "name": [exchange_obj.name],
+                    "id": [exchange_obj.id],
+                    "countries": [exchange_obj.countries],
+                    "has": [exchange_obj.has],
+                    "rateLimit": [exchange_obj.rateLimit],
+                },
+                index=[exch],
+            )
+            exch_info.index.name = "exchange"
 
             return exch_info
 
@@ -131,7 +158,9 @@ class CCXT(Library):
         """
         return None
 
-    def get_assets_info(self, exch: str, as_list: bool = False) -> Union[pd.DataFrame, List[str]]:
+    def get_assets_info(
+        self, exch: str, as_list: bool = False
+    ) -> Union[pd.DataFrame, List[str]]:
         """
         Get assets info.
 
@@ -148,12 +177,12 @@ class CCXT(Library):
             Dataframe with info on available assets or list of assets.
         """
         if self.assets is None:
-
             # inst exchange
-            if exch not in ccxt.exchanges:
+            if exch not in supported_exchanges:
                 raise ValueError(
                     f"{exch} is not a supported exchange. "
-                    f"Use get_exchanges_info() to get a list of supported exchanges.")
+                    f"Use get_exchanges_info() to get a list of supported exchanges."
+                )
             else:
                 if self.exchange is None:
                     self.exchange = getattr(ccxt, exch)()
@@ -170,11 +199,11 @@ class CCXT(Library):
         return self.assets
 
     def get_markets_info(
-            self,
-            exch: str,
-            quote_ccy: Optional[str] = None,
-            mkt_type: Optional[str] = None,
-            as_list: bool = False,
+        self,
+        exch: str,
+        quote_ccy: Optional[str] = None,
+        mkt_type: Optional[str] = None,
+        as_list: bool = False,
     ) -> Union[pd.DataFrame, List[str]]:
         """
         Get markets info.
@@ -196,12 +225,12 @@ class CCXT(Library):
             List or dataframe with info on available markets, by exchange.
         """
         if self.markets is None:
-
             # inst exchange
-            if exch not in ccxt.exchanges:
+            if exch not in supported_exchanges:
                 raise ValueError(
                     f"{exch} is not a supported exchange. "
-                    f"Use get_exchanges_info() to get a list of supported exchanges.")
+                    f"Use get_exchanges_info() to get a list of supported exchanges."
+                )
             else:
                 if self.exchange is None:
                     self.exchange = getattr(ccxt, exch)()
@@ -239,7 +268,15 @@ class CCXT(Library):
             List of available fields.
         """
         if self.fields is None:
-            self.fields = ["open", "high", "low", "close", "volume", "funding_rate", 'oi']
+            self.fields = [
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "funding_rate",
+                "oi",
+            ]
 
         return self.fields
 
@@ -258,12 +295,12 @@ class CCXT(Library):
             Dictionary with info on available frequencies.
         """
         if self.frequencies is None:
-
             # inst exchange
-            if exch not in ccxt.exchanges:
+            if exch not in supported_exchanges:
                 raise ValueError(
                     f"{exch} is not a supported exchange. "
-                    f"Use get_exchanges_info() to get a list of supported exchanges.")
+                    f"Use get_exchanges_info() to get a list of supported exchanges."
+                )
             else:
                 if self.exchange is None:
                     self.exchange = getattr(ccxt, exch)()
@@ -289,20 +326,19 @@ class CCXT(Library):
 
         """
         if self.rate_limit is None:
-
             # inst exchange
-            if exch not in ccxt.exchanges:
+            if exch not in supported_exchanges:
                 raise ValueError(
                     f"{exch} is not a supported exchange. "
-                    f"Use get_exchanges_info() to get a list of supported exchanges.")
+                    f"Use get_exchanges_info() to get a list of supported exchanges."
+                )
             else:
                 if self.exchange is None:
                     self.exchange = getattr(ccxt, exch)()
 
             self.rate_limit = {
-                "exchange rate limit":
-                    "delay in milliseconds between two consequent HTTP requests to the same exchange",
-                exch: self.exchange.rateLimit
+                "exchange rate limit": "delay in milliseconds between two consequent HTTP requests to the same exchange",
+                exch: self.exchange.rateLimit,
             }
 
         return self.rate_limit
@@ -317,9 +353,10 @@ class CCXT(Library):
             Name of exchange.
         """
         # inst exchange
-        if exch not in ccxt.exchanges:
+        if exch not in supported_exchanges:
             raise ValueError(
-                f"{exch} is not a supported exchange. Use get_exchanges_info() to get a list of supported exchanges.")
+                f"{exch} is not a supported exchange. Use get_exchanges_info() to get a list of supported exchanges."
+            )
         else:
             if self.exchange is None:
                 self.exchange = getattr(ccxt, exch)()
@@ -336,33 +373,46 @@ class CCXT(Library):
         if self.markets is None:
             self.markets = list(self.exchange.markets.keys())
         if self.fields is None:
-            self.fields = ["open", "high", "low", "close", "volume", "funding_rate", 'oi']
+            self.fields = [
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "funding_rate",
+                "oi",
+            ]
         if self.frequencies is None:
             self.frequencies = list(self.exchange.timeframes.keys())
         if self.rate_limit is None:
             self.rate_limit = self.exchange.rateLimit
 
     @staticmethod
-    def exponential_backoff_with_jitter(base_delay: float, max_delay: int, attempts: int) -> None:
-        delay = min(max_delay, base_delay * (2 ** attempts))
+    def exponential_backoff_with_jitter(
+        base_delay: float, max_delay: int, attempts: int
+    ) -> None:
+        delay = min(max_delay, base_delay * (2**attempts))
         delay_with_jitter = delay + random.uniform(0, delay * 0.5)
         sleep(delay_with_jitter)
 
     @staticmethod
-    async def exponential_backoff_with_jitter_async(base_delay: float, max_delay: int, attempts: int) -> None:
-        delay = min(max_delay, base_delay * (2 ** attempts))
+    async def exponential_backoff_with_jitter_async(
+        base_delay: float, max_delay: int, attempts: int
+    ) -> None:
+        delay = min(max_delay, base_delay * (2**attempts))
         delay_with_jitter = delay + random.uniform(0, delay * 0.5)
         await asyncio.sleep(delay_with_jitter)
 
-    async def _fetch_ohlcv_async(self,
-                                 ticker: str,
-                                 freq: str,
-                                 start_date: int,
-                                 end_date: int,
-                                 exch: str,
-                                 trials: int = 3,
-                                 pause: int = 1
-                                 ) -> Union[List, None]:
+    async def _fetch_ohlcv_async(
+        self,
+        ticker: str,
+        freq: str,
+        start_date: int,
+        end_date: int,
+        exch: str,
+        trials: int = 3,
+        pause: int = 1,
+    ) -> Union[List, None]:
         """
         Fetches OHLCV data for a specific ticker.
 
@@ -396,18 +446,16 @@ class CCXT(Library):
             self.exchange_async = getattr(ccxt_async, exch)()
 
         # fetch data
-        if self.exchange_async.has['fetchOHLCV']:
-
+        if self.exchange_async.has["fetchOHLCV"]:
             # while loop to fetch all data
             while start_date < end_date and attempts < trials:
-
                 try:
                     data = await self.exchange_async.fetch_ohlcv(
                         ticker,
                         freq,
                         since=start_date,
                         limit=self.max_obs_per_call,
-                        params={'until': end_date}
+                        params={"until": end_date},
                     )
 
                     # add data to list
@@ -431,26 +479,29 @@ class CCXT(Library):
                         break
 
                 finally:
-                    await self.exponential_backoff_with_jitter_async(self.exchange_async.rateLimit / 1000,
-                                                                     pause,
-                                                                     attempts)
+                    await self.exponential_backoff_with_jitter_async(
+                        self.exchange_async.rateLimit / 1000, pause, attempts
+                    )
 
             await self.exchange_async.close()
             return data_resp
 
         else:
-            logging.warning(f"OHLCV data is not available for {self.exchange_async.id}.")
+            logging.warning(
+                f"OHLCV data is not available for {self.exchange_async.id}."
+            )
             return None
 
-    def _fetch_ohlcv(self,
-                     ticker: str,
-                     freq: str,
-                     start_date: str,
-                     end_date: str,
-                     exch: str,
-                     trials: int = 3,
-                     pause: int = 1
-                     ) -> Union[List, None]:
+    def _fetch_ohlcv(
+        self,
+        ticker: str,
+        freq: str,
+        start_date: str,
+        end_date: str,
+        exch: str,
+        trials: int = 3,
+        pause: int = 1,
+    ) -> Union[List, None]:
         """
         Fetches OHLCV data for a specific ticker.
 
@@ -484,21 +535,16 @@ class CCXT(Library):
             self.exchange = getattr(ccxt, exch)()
 
         # fetch data
-        if self.exchange.has['fetchOHLCV']:
-
+        if self.exchange.has["fetchOHLCV"]:
             # while loop to fetch all data
             while start_date < end_date and attempts < trials:
-
                 try:
                     data = self.exchange.fetch_ohlcv(
                         ticker,
                         freq,
                         since=start_date,
                         limit=self.max_obs_per_call,
-                        params={
-                            'until': end_date,
-                            'paginate': True
-                        }
+                        params={"until": end_date, "paginate": True},
                     )
 
                     # add data to list
@@ -522,7 +568,9 @@ class CCXT(Library):
                         break
 
                 finally:
-                    self.exponential_backoff_with_jitter(self.exchange.rateLimit / 1000, pause, attempts)
+                    self.exponential_backoff_with_jitter(
+                        self.exchange.rateLimit / 1000, pause, attempts
+                    )
 
             return data_resp
 
@@ -530,15 +578,16 @@ class CCXT(Library):
             logging.warning(f"OHLCV data is not available for {self.exchange.id}.")
             return None
 
-    async def _fetch_all_ohlcv_async(self,
-                                     tickers,
-                                     freq: str,
-                                     start_date: int,
-                                     end_date: int,
-                                     exch: str,
-                                     trials: int = 3,
-                                     pause: int = 1
-                                     ) -> Union[List, None]:
+    async def _fetch_all_ohlcv_async(
+        self,
+        tickers,
+        freq: str,
+        start_date: int,
+        end_date: int,
+        exch: str,
+        trials: int = 3,
+        pause: int = 1,
+    ) -> Union[List, None]:
         """
         Fetches OHLCV data for a list of tickers.
 
@@ -573,7 +622,9 @@ class CCXT(Library):
 
         # loop through tickers
         for ticker in tickers:
-            data = await self._fetch_ohlcv_async(ticker, freq, start_date, end_date, trials=trials, exch=exch)
+            data = await self._fetch_ohlcv_async(
+                ticker, freq, start_date, end_date, trials=trials, exch=exch
+            )
             await asyncio.sleep(pause)
             self.data_resp.append(data)
             pbar.update(1)
@@ -582,15 +633,16 @@ class CCXT(Library):
 
         return self.data_resp
 
-    def _fetch_all_ohlcv(self,
-                         tickers,
-                         freq: str,
-                         start_date: int,
-                         end_date: int,
-                         exch: str,
-                         trials: int = 3,
-                         pause: int = 1
-                         ) -> Union[List, None]:
+    def _fetch_all_ohlcv(
+        self,
+        tickers,
+        freq: str,
+        start_date: int,
+        end_date: int,
+        exch: str,
+        trials: int = 3,
+        pause: int = 1,
+    ) -> Union[List, None]:
         """
         Fetches OHLCV data for a list of tickers.
 
@@ -625,21 +677,24 @@ class CCXT(Library):
 
         # loop through tickers
         for ticker in tickers:
-            data = self._fetch_ohlcv(ticker, freq, start_date, end_date, trials=trials, exch=exch)
+            data = self._fetch_ohlcv(
+                ticker, freq, start_date, end_date, trials=trials, exch=exch
+            )
             sleep(pause)
             self.data_resp.append(data)
             pbar.update(1)
 
         return self.data_resp
 
-    async def _fetch_funding_rates_async(self,
-                                         ticker: str,
-                                         start_date: int,
-                                         end_date: int,
-                                         exch: str,
-                                         trials: int = 3,
-                                         pause: int = 1
-                                         ) -> Union[List, None]:
+    async def _fetch_funding_rates_async(
+        self,
+        ticker: str,
+        start_date: int,
+        end_date: int,
+        exch: str,
+        trials: int = 3,
+        pause: int = 1,
+    ) -> Union[List, None]:
         """
         Fetches funding rates data for a specific ticker.
 
@@ -669,22 +724,20 @@ class CCXT(Library):
             self.exchange_async = getattr(ccxt_async, exch)()
 
         # fetch data
-        if self.exchange_async.has['fetchFundingRateHistory']:
-
+        if self.exchange_async.has["fetchFundingRateHistory"]:
             # while loop to get all data
             while start_date < end_date and attempts < trials:
-
                 try:
                     data = await self.exchange_async.fetch_funding_rate_history(
                         ticker,
                         since=start_date,
                         limit=self.max_obs_per_call,
-                        params={'until': end_date}
+                        params={"until": end_date},
                     )
 
                     # add data to list
                     if data:
-                        start_date = data[-1]['timestamp'] + 1
+                        start_date = data[-1]["timestamp"] + 1
                         data_resp.extend(data)
                     else:
                         break
@@ -703,25 +756,28 @@ class CCXT(Library):
                         break
 
                 finally:
-                    await self.exponential_backoff_with_jitter_async(self.exchange_async.rateLimit / 1000,
-                                                                     pause,
-                                                                     attempts)
+                    await self.exponential_backoff_with_jitter_async(
+                        self.exchange_async.rateLimit / 1000, pause, attempts
+                    )
 
             await self.exchange_async.close()
             return data_resp
 
         else:
-            logging.warning(f"Funding rates are not available for {self.exchange_async.id}.")
+            logging.warning(
+                f"Funding rates are not available for {self.exchange_async.id}."
+            )
             return None
 
-    def _fetch_funding_rates(self,
-                             ticker: str,
-                             start_date: int,
-                             end_date: int,
-                             exch: str,
-                             trials: int = 3,
-                             pause: int = 1
-                             ) -> Union[List, None]:
+    def _fetch_funding_rates(
+        self,
+        ticker: str,
+        start_date: int,
+        end_date: int,
+        exch: str,
+        trials: int = 3,
+        pause: int = 1,
+    ) -> Union[List, None]:
         """
         Fetches funding rates data for a specific ticker.
 
@@ -751,22 +807,20 @@ class CCXT(Library):
             self.exchange = getattr(ccxt, exch)()
 
         # fetch data
-        if self.exchange.has['fetchFundingRateHistory']:
-
+        if self.exchange.has["fetchFundingRateHistory"]:
             # while loop to get all data
             while start_date < end_date and attempts < trials:
-
                 try:
                     data = self.exchange.fetch_funding_rate_history(
                         ticker,
                         since=start_date,
                         limit=self.max_obs_per_call,
-                        params={'until': end_date}
+                        params={"until": end_date},
                     )
 
                     # add data to list
                     if data:
-                        start_date = data[-1]['timestamp'] + 1
+                        start_date = data[-1]["timestamp"] + 1
                         data_resp.extend(data)
                     else:
                         break
@@ -785,7 +839,9 @@ class CCXT(Library):
                         break
 
                 finally:
-                    self.exponential_backoff_with_jitter(self.exchange.rateLimit / 1000, pause, attempts)
+                    self.exponential_backoff_with_jitter(
+                        self.exchange.rateLimit / 1000, pause, attempts
+                    )
 
             return data_resp
 
@@ -793,14 +849,15 @@ class CCXT(Library):
             logging.warning(f"Funding rates are not available for {self.exchange.id}.")
             return None
 
-    async def _fetch_all_funding_rates_async(self,
-                                             tickers,
-                                             start_date: int,
-                                             end_date: int,
-                                             exch: str,
-                                             trials: int = 3,
-                                             pause: int = 1
-                                             ) -> Union[List, None]:
+    async def _fetch_all_funding_rates_async(
+        self,
+        tickers,
+        start_date: int,
+        end_date: int,
+        exch: str,
+        trials: int = 3,
+        pause: int = 1,
+    ) -> Union[List, None]:
         """
         Fetches funding rates data for a list of tickers.
 
@@ -833,7 +890,9 @@ class CCXT(Library):
 
         # loop through tickers
         for ticker in tickers:
-            data = await self._fetch_funding_rates_async(ticker, start_date, end_date, trials=trials, exch=exch)
+            data = await self._fetch_funding_rates_async(
+                ticker, start_date, end_date, trials=trials, exch=exch
+            )
             self.data_resp.append(data)
             pbar.update(1)
             await asyncio.sleep(pause)
@@ -842,14 +901,15 @@ class CCXT(Library):
 
         return self.data_resp
 
-    def _fetch_all_funding_rates(self,
-                                 tickers,
-                                 start_date: int,
-                                 end_date: int,
-                                 exch: str,
-                                 trials: int = 3,
-                                 pause: int = 1
-                                 ) -> Union[List, None]:
+    def _fetch_all_funding_rates(
+        self,
+        tickers,
+        start_date: int,
+        end_date: int,
+        exch: str,
+        trials: int = 3,
+        pause: int = 1,
+    ) -> Union[List, None]:
         """
         Fetches funding rates data for a list of tickers.
 
@@ -883,22 +943,25 @@ class CCXT(Library):
 
         # loop through tickers
         for ticker in tickers:
-            data = self._fetch_funding_rates(ticker, start_date, end_date, trials=trials, exch=exch)
+            data = self._fetch_funding_rates(
+                ticker, start_date, end_date, trials=trials, exch=exch
+            )
             self.data_resp.append(data)
             pbar.update(1)
             sleep(pause)
 
         return self.data_resp
 
-    async def _fetch_open_interest_async(self,
-                                         ticker: str,
-                                         freq: str,
-                                         start_date: int,
-                                         end_date: int,
-                                         exch: str,
-                                         trials: int = 3,
-                                         pause: int = 1
-                                         ) -> Union[List, None]:
+    async def _fetch_open_interest_async(
+        self,
+        ticker: str,
+        freq: str,
+        start_date: int,
+        end_date: int,
+        exch: str,
+        trials: int = 3,
+        pause: int = 1,
+    ) -> Union[List, None]:
         """
         Fetches open interest data for a specific ticker.
 
@@ -933,23 +996,21 @@ class CCXT(Library):
             self.exchange_async = getattr(ccxt_async, exch)()
 
         # fetch data
-        if self.exchange_async.has['fetchOpenInterestHistory']:
-
+        if self.exchange_async.has["fetchOpenInterestHistory"]:
             # while loop to get all data
             while start_date < end_date and attempts < trials:
-
                 try:
                     data = await self.exchange_async.fetch_open_interest_history(
                         ticker,
                         freq,
                         since=start_date,
                         limit=500,
-                        params={'until': end_date}
+                        params={"until": end_date},
                     )
 
                     # add data to list
                     if data:
-                        start_date = data[-1]['timestamp'] + 1
+                        start_date = data[-1]["timestamp"] + 1
                         data_resp.extend(data)
                     else:
                         break
@@ -968,26 +1029,29 @@ class CCXT(Library):
                         break
 
                 finally:
-                    await self.exponential_backoff_with_jitter_async(self.exchange_async.rateLimit / 1000,
-                                                                     pause,
-                                                                     attempts)
+                    await self.exponential_backoff_with_jitter_async(
+                        self.exchange_async.rateLimit / 1000, pause, attempts
+                    )
 
             await self.exchange_async.close()
             return data_resp
 
         else:
-            logging.warning(f"Open interest is not available for {self.exchange_async.id}.")
+            logging.warning(
+                f"Open interest is not available for {self.exchange_async.id}."
+            )
             return None
 
-    def _fetch_open_interest(self,
-                             ticker: str,
-                             freq: str,
-                             start_date: int,
-                             end_date: int,
-                             exch: str,
-                             trials: int = 3,
-                             pause: int = 1
-                             ) -> Union[List, None]:
+    def _fetch_open_interest(
+        self,
+        ticker: str,
+        freq: str,
+        start_date: int,
+        end_date: int,
+        exch: str,
+        trials: int = 3,
+        pause: int = 1,
+    ) -> Union[List, None]:
         """
         Fetches open interest data for a specific ticker.
 
@@ -1021,23 +1085,21 @@ class CCXT(Library):
         self.exchange = getattr(ccxt, exch)()
 
         # fetch data
-        if self.exchange.has['fetchOpenInterestHistory']:
-
+        if self.exchange.has["fetchOpenInterestHistory"]:
             # while loop to get all data
             while start_date < end_date and attempts < trials:
-
                 try:
                     data = self.exchange.fetch_open_interest_history(
                         ticker,
                         freq,
                         since=start_date,
                         limit=500,
-                        params={'until': end_date}
+                        params={"until": end_date},
                     )
 
                     # add data to list
                     if data:
-                        start_date = data[-1]['timestamp'] + 1
+                        start_date = data[-1]["timestamp"] + 1
                         data_resp.extend(data)
                     else:
                         break
@@ -1056,7 +1118,9 @@ class CCXT(Library):
                         break
 
                 finally:
-                    self.exponential_backoff_with_jitter(self.exchange.rateLimit / 1000, pause, attempts)
+                    self.exponential_backoff_with_jitter(
+                        self.exchange.rateLimit / 1000, pause, attempts
+                    )
 
             return data_resp
 
@@ -1064,15 +1128,16 @@ class CCXT(Library):
             logging.warning(f"Open interest is not available for {self.exchange.id}.")
             return None
 
-    async def _fetch_all_open_interest_async(self,
-                                             tickers,
-                                             freq: str,
-                                             start_date: int,
-                                             end_date: int,
-                                             exch: str,
-                                             trials: int = 3,
-                                             pause: int = 1
-                                             ) -> Union[List, None]:
+    async def _fetch_all_open_interest_async(
+        self,
+        tickers,
+        freq: str,
+        start_date: int,
+        end_date: int,
+        exch: str,
+        trials: int = 3,
+        pause: int = 1,
+    ) -> Union[List, None]:
         """
         Fetches open interest data for a list of tickers.
 
@@ -1107,8 +1172,10 @@ class CCXT(Library):
 
         # loop through tickers
         for ticker in tickers:
-            data = await self._fetch_open_interest_async(ticker, freq, start_date, end_date, trials=trials, exch=exch)
-            self.data_resp.extend(data)
+            data = await self._fetch_open_interest_async(
+                ticker, freq, start_date, end_date, trials=trials, exch=exch
+            )
+            self.data_resp.append(data)
             pbar.update(1)
             await asyncio.sleep(pause)
 
@@ -1116,15 +1183,16 @@ class CCXT(Library):
 
         return self.data_resp
 
-    def _fetch_all_open_interest(self,
-                                 tickers,
-                                 freq: str,
-                                 start_date: int,
-                                 end_date: int,
-                                 exch: str,
-                                 trials: int = 3,
-                                 pause: int = 1
-                                 ) -> Union[List, None]:
+    def _fetch_all_open_interest(
+        self,
+        tickers,
+        freq: str,
+        start_date: int,
+        end_date: int,
+        exch: str,
+        trials: int = 3,
+        pause: int = 1,
+    ) -> Union[List, None]:
         """
         Fetches open interest data for a list of tickers.
 
@@ -1159,8 +1227,10 @@ class CCXT(Library):
 
         # loop through tickers
         for ticker in tickers:
-            data = self._fetch_open_interest(ticker, freq, start_date, end_date, trials=trials, exch=exch)
-            self.data_resp.extend(data)
+            data = self._fetch_open_interest(
+                ticker, freq, start_date, end_date, trials=trials, exch=exch
+            )
+            self.data_resp.append(data)
             pbar.update(1)
             sleep(pause)
 
@@ -1173,7 +1243,7 @@ class CCXT(Library):
         Parameters
         ----------
         data_req: DataRequest
-            Parameters of data request in CryptoDataPy format.
+            Parameters of data request in cryptodatapy format.
 
         Returns
         -------
@@ -1188,7 +1258,7 @@ class CCXT(Library):
         # check markets
         if not any([market in self.markets for market in self.data_req.source_markets]):
             raise ValueError(
-                f"Selected markets are not available. Use the '.markets' attribute to check supported markets."
+                "Selected markets are not available. Use the '.markets' attribute to check supported markets."
             )
 
         # check freq
@@ -1207,13 +1277,13 @@ class CCXT(Library):
         # check start date
         if not isinstance(self.data_req.source_start_date, int):
             raise ValueError(
-                f"Start date must be in integers in milliseconds since Unix epoch."
+                "Start date must be in integers in milliseconds since Unix epoch."
             )
 
         # check end date
         if not isinstance(self.data_req.source_end_date, int):
             raise ValueError(
-                f"End date must be in integers in milliseconds since Unix epoch."
+                "End date must be in integers in milliseconds since Unix epoch."
             )
 
         # check fields
@@ -1224,35 +1294,50 @@ class CCXT(Library):
             )
 
         # check ohlcv
-        if any([field in ['open', 'high', 'low', 'close', 'volume'] for field in self.data_req.fields]) and \
-                not self.exchange.has["fetchOHLCV"]:
+        if (
+            any(
+                [
+                    field in ["open", "high", "low", "close", "volume"]
+                    for field in self.data_req.fields
+                ]
+            )
+            and not self.exchange.has["fetchOHLCV"]
+        ):
             raise ValueError(
                 f"OHLCV data is not available for {self.data_req.exch}."
                 f" Try another exchange or data request."
             )
 
         # check funding rates
-        if any([field == 'funding_rate' for field in self.data_req.fields]) and \
-                not self.exchange.has["fetchFundingRateHistory"]:
+        if (
+            any([field == "funding_rate" for field in self.data_req.fields])
+            and not self.exchange.has["fetchFundingRateHistory"]
+        ):
             raise ValueError(
                 f"Funding rates are not available for {self.data_req.exch}."
                 f" Try another exchange or data request."
             )
 
         # check open interest
-        if any([field == 'oi' for field in self.data_req.fields]) and \
-                not self.exchange.has["fetchOpenInterestHistory"]:
+        if (
+            any([field == "oi" for field in self.data_req.fields])
+            and not self.exchange.has["fetchOpenInterestHistory"]
+        ):
             raise ValueError(
                 f"Open interest is not available for {self.data_req.exch}."
                 f" Try another exchange or data request."
             )
 
         # check perp future
-        if any([(field == 'funding_rate' or field == 'open_interest') for field in self.data_req.fields]) and \
-                self.data_req.mkt_type not in ['perpetual_future', 'future']:
+        if any(
+            [
+                (field == "funding_rate" or field == "open_interest")
+                for field in self.data_req.fields
+            ]
+        ) and self.data_req.mkt_type not in ["perpetual_future", "future"]:
             raise ValueError(
-                f"You have requested fields only available for futures markets."
-                f" Change mkt_type to 'perpetual_future' or 'future'."
+                "You have requested fields only available for futures markets."
+                " Change mkt_type to 'perpetual_future' or 'future'."
             )
 
         return self.data_req
@@ -1280,7 +1365,7 @@ class CCXT(Library):
         Parameters
         ----------
         data_req: DataRequest
-            Parameters of data request in CryptoDataPy format.
+            Parameters of data request in cryptodatapy format.
 
         Returns
         -------
@@ -1296,17 +1381,19 @@ class CCXT(Library):
             self.data_resp = []
 
         # get entire data history
-        await self._fetch_all_ohlcv_async(self.data_req.source_markets,
-                                          self.data_req.source_freq,
-                                          self.data_req.source_start_date,
-                                          self.data_req.source_end_date,
-                                          self.data_req.exch,
-                                          trials=self.data_req.trials,
-                                          pause=self.data_req.pause)
+        await self._fetch_all_ohlcv_async(
+            self.data_req.source_markets,
+            self.data_req.source_freq,
+            self.data_req.source_start_date,
+            self.data_req.source_end_date,
+            self.data_req.exch,
+            trials=self.data_req.trials,
+            pause=self.data_req.pause,
+        )
 
         # wrangle df
         if self.data_resp:
-            df = self.wrangle_data_resp(data_type='ohlcv')
+            df = self.wrangle_data_resp(data_type="ohlcv")
             return df
         else:
             logging.warning("Failed to get requested OHLCV data.")
@@ -1318,7 +1405,7 @@ class CCXT(Library):
         Parameters
         ----------
         data_req: DataRequest
-            Parameters of data request in CryptoDataPy format.
+            Parameters of data request in cryptodatapy format.
 
         Returns
         -------
@@ -1334,29 +1421,33 @@ class CCXT(Library):
             self.data_resp = []
 
         # get entire data history
-        self._fetch_all_ohlcv(self.data_req.source_markets,
-                              self.data_req.source_freq,
-                              self.data_req.source_start_date,
-                              self.data_req.source_end_date,
-                              self.data_req.exch,
-                              trials=self.data_req.trials,
-                              pause=self.data_req.pause)
+        self._fetch_all_ohlcv(
+            self.data_req.source_markets,
+            self.data_req.source_freq,
+            self.data_req.source_start_date,
+            self.data_req.source_end_date,
+            self.data_req.exch,
+            trials=self.data_req.trials,
+            pause=self.data_req.pause,
+        )
 
         # wrangle df
         if self.data_resp:
-            df = self.wrangle_data_resp(data_type='ohlcv')
+            df = self.wrangle_data_resp(data_type="ohlcv")
             return df
         else:
             logging.warning("Failed to get requested OHLCV data.")
 
-    async def fetch_tidy_funding_rates_async(self, data_req: DataRequest) -> pd.DataFrame:
+    async def fetch_tidy_funding_rates_async(
+        self, data_req: DataRequest
+    ) -> pd.DataFrame:
         """
         Gets entire funding rates history and wrangles the data response into tidy data format.
 
         Parameters
         ----------
         data_req: DataRequest
-            Parameters of data request in CryptoDataPy format.
+            Parameters of data request in cryptodatapy format.
 
         Returns
         -------
@@ -1372,16 +1463,18 @@ class CCXT(Library):
             self.data_resp = []
 
         # get entire data history
-        await self._fetch_all_funding_rates_async(self.data_req.source_markets,
-                                                  self.data_req.source_start_date,
-                                                  self.data_req.source_end_date,
-                                                  self.data_req.exch,
-                                                  trials=self.data_req.trials,
-                                                  pause=self.data_req.pause)
+        await self._fetch_all_funding_rates_async(
+            self.data_req.source_markets,
+            self.data_req.source_start_date,
+            self.data_req.source_end_date,
+            self.data_req.exch,
+            trials=self.data_req.trials,
+            pause=self.data_req.pause,
+        )
 
         # wrangle df
         if self.data_resp:
-            df = self.wrangle_data_resp(data_type='funding_rates')
+            df = self.wrangle_data_resp(data_type="funding_rates")
             return df
         else:
             logging.warning("Failed to get requested funding rates.")
@@ -1393,7 +1486,7 @@ class CCXT(Library):
         Parameters
         ----------
         data_req: DataRequest
-            Parameters of data request in CryptoDataPy format.
+            Parameters of data request in cryptodatapy format.
 
         Returns
         -------
@@ -1409,28 +1502,32 @@ class CCXT(Library):
             self.data_resp = []
 
         # get entire data history
-        self._fetch_all_funding_rates(self.data_req.source_markets,
-                                      self.data_req.source_start_date,
-                                      self.data_req.source_end_date,
-                                      self.data_req.exch,
-                                      trials=self.data_req.trials,
-                                      pause=self.data_req.pause)
+        self._fetch_all_funding_rates(
+            self.data_req.source_markets,
+            self.data_req.source_start_date,
+            self.data_req.source_end_date,
+            self.data_req.exch,
+            trials=self.data_req.trials,
+            pause=self.data_req.pause,
+        )
 
         # wrangle df
         if self.data_resp:
-            df = self.wrangle_data_resp(data_type='funding_rates')
+            df = self.wrangle_data_resp(data_type="funding_rates")
             return df
         else:
             logging.warning("Failed to get requested funding rates.")
 
-    async def fetch_tidy_open_interest_async(self, data_req: DataRequest) -> pd.DataFrame:
+    async def fetch_tidy_open_interest_async(
+        self, data_req: DataRequest
+    ) -> pd.DataFrame:
         """
         Gets entire open interest history and wrangles the data response into tidy data format.
 
         Parameters
         ----------
         data_req: DataRequest
-            Parameters of data request in CryptoDataPy format.
+            Parameters of data request in cryptodatapy format.
 
         Returns
         -------
@@ -1446,17 +1543,19 @@ class CCXT(Library):
             self.data_resp = []
 
         # get entire data history
-        await self._fetch_all_open_interest_async(self.data_req.source_markets,
-                                                  self.data_req.source_freq,
-                                                  self.data_req.source_start_date,
-                                                  self.data_req.source_end_date,
-                                                  self.data_req.exch,
-                                                  trials=self.data_req.trials,
-                                                  pause=self.data_req.pause)
+        await self._fetch_all_open_interest_async(
+            self.data_req.source_markets,
+            self.data_req.source_freq,
+            self.data_req.source_start_date,
+            self.data_req.source_end_date,
+            self.data_req.exch,
+            trials=self.data_req.trials,
+            pause=self.data_req.pause,
+        )
 
         # wrangle df
         if self.data_resp:
-            df = self.wrangle_data_resp(data_type='open_interest')
+            df = self.wrangle_data_resp(data_type="open_interest")
             return df
         else:
             logging.warning("Failed to get requested open interest.")
@@ -1468,7 +1567,7 @@ class CCXT(Library):
         Parameters
         ----------
         data_req: DataRequest
-            Parameters of data request in CryptoDataPy format.
+            Parameters of data request in cryptodatapy format.
 
         Returns
         -------
@@ -1484,17 +1583,19 @@ class CCXT(Library):
             self.data_resp = []
 
         # get entire data history
-        self._fetch_all_open_interest(self.data_req.source_markets,
-                                      self.data_req.source_freq,
-                                      self.data_req.source_start_date,
-                                      self.data_req.source_end_date,
-                                      self.data_req.exch,
-                                      trials=self.data_req.trials,
-                                      pause=self.data_req.pause)
+        self._fetch_all_open_interest(
+            self.data_req.source_markets,
+            self.data_req.source_freq,
+            self.data_req.source_start_date,
+            self.data_req.source_end_date,
+            self.data_req.exch,
+            trials=self.data_req.trials,
+            pause=self.data_req.pause,
+        )
 
         # wrangle df
         if self.data_resp:
-            df = self.wrangle_data_resp(data_type='open_interest')
+            df = self.wrangle_data_resp(data_type="open_interest")
             return df
         else:
             logging.warning("Failed to get requested open interest.")
@@ -1505,7 +1606,7 @@ class CCXT(Library):
 
         Parameters
         data_req: DataRequest
-            Parameters of data request in CryptoDataPy format.
+            Parameters of data request in cryptodatapy format.
 
         Returns
         -------
@@ -1515,7 +1616,12 @@ class CCXT(Library):
         logging.info("Retrieving data request from CCXT...")
 
         # get OHLCV
-        if any([field in ["open", "high", "low", "close", "volume"] for field in data_req.fields]):
+        if any(
+            [
+                field in ["open", "high", "low", "close", "volume"]
+                for field in data_req.fields
+            ]
+        ):
             df = await self.fetch_tidy_ohlcv_async(data_req)
             if any(df):
                 self.data = pd.concat([self.data, df])
@@ -1550,7 +1656,7 @@ class CCXT(Library):
 
         Parameters
         data_req: DataRequest
-            Parameters of data request in CryptoDataPy format.
+            Parameters of data request in cryptodatapy format.
 
         Returns
         -------
@@ -1560,7 +1666,12 @@ class CCXT(Library):
         logging.info("Retrieving data request from CCXT...")
 
         # get OHLCV
-        if any([field in ["open", "high", "low", "close", "volume"] for field in data_req.fields]):
+        if any(
+            [
+                field in ["open", "high", "low", "close", "volume"]
+                for field in data_req.fields
+            ]
+        ):
             df = self.fetch_tidy_ohlcv(data_req)
             if any(df):
                 self.data = pd.concat([self.data, df])
