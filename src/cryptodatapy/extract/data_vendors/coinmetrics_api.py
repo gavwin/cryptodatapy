@@ -485,10 +485,25 @@ class CoinMetrics(DataVendor):
         elif data_type == 'market_candles' or data_type == 'open_interest' or \
                 data_type == 'funding_rates' or data_type == 'trades' or data_type == 'quotes':
             self.get_assets_info(as_list=True)
+            # Check if assets list is empty or None
+            if not self.assets:
+                raise ValueError(
+                    "Unable to fetch assets list from CoinMetrics. "
+                    "Please check your API credentials and connection."
+                )
+            # Convert assets to lowercase for case-insensitive comparison
+            assets_lower = [asset.lower() if isinstance(asset, str) else asset for asset in self.assets]
             # avail tickers
             self.data_req.source_markets = [market for ticker, market in
                                             zip(self.data_req.source_tickers, self.data_req.source_markets)
-                                            if ticker in self.assets]
+                                            if ticker.lower() in assets_lower]
+
+            # raise error if no markets available
+            if len(self.data_req.source_markets) == 0:
+                raise ValueError(
+                    f"{data_req.tickers} are not valid tickers for the requested data type. "
+                    f"No markets found for these tickers. Available assets: {self.assets[:10] if len(self.assets) > 10 else self.assets}"
+                )
 
         # check assets
         elif data_type == 'asset_metrics':
