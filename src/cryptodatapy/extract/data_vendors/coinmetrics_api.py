@@ -111,7 +111,18 @@ class CoinMetrics(DataVendor):
             # For reference_data endpoints, convert DataCollection to list
             if data_type.startswith('reference_data_') or data_type.startswith('catalog_') and data_type.endswith('_v2'):
                 if hasattr(resp, 'to_list'):
-                    self.data_resp = resp.to_list()
+                    try:
+                        # Try to_list() first (should handle pagination automatically)
+                        self.data_resp = resp.to_list()
+                    except (TypeError, AttributeError):
+                        # If to_list() fails, manually iterate through pages
+                        self.data_resp = []
+                        try:
+                            for item in resp:
+                                self.data_resp.append(item)
+                        except (TypeError, AttributeError):
+                            # If iteration also fails, just use the response as-is
+                            self.data_resp = resp
                 else:
                     self.data_resp = resp
             else:
@@ -180,8 +191,19 @@ class CoinMetrics(DataVendor):
         assets: list or pd.DataFrame
             List or dataframe with info on available assets.
         """
-        # req data
-        self.req_meta(data_type='reference_data_assets')
+        # req data - manually handle pagination to ensure we get ALL assets
+        try:
+            # Call the SDK method and iterate through all pages
+            resp = self.client.reference_data_assets()
+            data = []
+            for item in resp:
+                data.append(item)
+            self.data_resp = data
+        except Exception as e:
+            logging.warning(f"Failed to get assets info: {str(e)}")
+            # Fallback to original method
+            self.req_meta(data_type='reference_data_assets')
+
         # wrangle data resp
         self.assets = WrangleInfo(self.data_resp).cm_meta_resp(as_list=as_list, index_name='ticker')
 
