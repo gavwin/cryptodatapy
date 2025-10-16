@@ -967,6 +967,11 @@ class WrangleData:
         # add tickers
         for i in range(len(self.data_req.source_markets)):
             df = pd.DataFrame(self.data_resp[i])
+            df['symbol'] = self.data_req.source_markets[i]
+            # Use openInterestValue if openInterestAmount is not available
+            if 'openInterestAmount' in df.columns and df['openInterestAmount'].isna().all():
+                if 'openInterestValue' in df.columns:
+                    df['openInterestAmount'] = df['openInterestValue']
             self.tidy_data = pd.concat([self.tidy_data, df])
         self.tidy_data = self.tidy_data[['symbol', 'openInterestAmount', 'datetime']]
         self.data_resp = self.tidy_data
@@ -1006,7 +1011,7 @@ class WrangleData:
         self.tidy_data = self.tidy_data.apply(pd.to_numeric, errors='coerce').convert_dtypes()
 
         # remove bad data
-        if data_type != 'funding_rates':
+        if data_type not in ['funding_rates', 'open_interest']:
             self.tidy_data = self.tidy_data[self.tidy_data != 0]  # 0 values
         self.tidy_data = self.tidy_data[~self.tidy_data.index.duplicated()]  # duplicate rows
         self.tidy_data = self.tidy_data.dropna(how='all').dropna(how='all', axis=1)  # entire row or col NaNs
