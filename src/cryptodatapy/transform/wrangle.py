@@ -967,40 +967,24 @@ class WrangleData:
         # add tickers
         for i in range(len(self.data_req.source_markets)):
             df = pd.DataFrame(self.data_resp[i])
-            print(f"[OI_DEBUG1] DataFrame from API - shape: {df.shape}, columns: {df.columns.tolist()}")
-            print(f"[OI_DEBUG1b] openInterestAmount values: {df['openInterestAmount'].head(3).tolist() if 'openInterestAmount' in df.columns else 'column missing'}")
-            print(f"[OI_DEBUG1c] openInterestValue values: {df['openInterestValue'].head(3).tolist() if 'openInterestValue' in df.columns else 'column missing'}")
-
             df['symbol'] = self.data_req.source_markets[i]
             # Use openInterestValue if openInterestAmount is not available
             if 'openInterestAmount' in df.columns and df['openInterestAmount'].isna().all():
-                print(f"[OI_DEBUG2] openInterestAmount is all NaN, using openInterestValue")
                 if 'openInterestValue' in df.columns:
                     df['openInterestAmount'] = df['openInterestValue']
-                    print(f"[OI_DEBUG2b] After assignment: {df['openInterestAmount'].head(3).tolist()}")
             self.tidy_data = pd.concat([self.tidy_data, df])
-
-        print(f"[OI_DEBUG3] After concat - shape: {self.tidy_data.shape}")
-        print(f"[OI_DEBUG3b] openInterestAmount column: {self.tidy_data['openInterestAmount'].head(3).tolist()}")
-
         self.tidy_data = self.tidy_data[['symbol', 'openInterestAmount', 'datetime']]
-        print(f"[OI_DEBUG4] After filtering - shape: {self.tidy_data.shape}, head:\n{self.tidy_data.head()}")
         self.data_resp = self.tidy_data
 
         # convert to lib fields
         self.convert_fields_to_lib(data_source='ccxt')
-        print(f"[OI_DEBUG5] After convert_fields_to_lib - shape: {self.data_resp.shape}, columns: {self.data_resp.columns.tolist()}")
-        print(f"[OI_DEBUG5b] oi column values: {self.data_resp['oi'].head(3).tolist() if 'oi' in self.data_resp.columns else 'column missing'}")
         self.tidy_data = self.data_resp
 
         # convert to datetime
         self.tidy_data['date'] = pd.to_datetime(self.tidy_data.set_index('date').index).floor('s').tz_localize(None)
-        print(f"[OI_DEBUG6] After datetime conversion - shape: {self.tidy_data.shape}")
 
         # set index
         self.tidy_data = self.tidy_data.set_index(['date', 'ticker']).sort_index()
-        print(f"[OI_DEBUG7] After set_index - shape: {self.tidy_data.shape}, columns: {self.tidy_data.columns.tolist()}")
-        print(f"[OI_DEBUG7b] Final data:\n{self.tidy_data.head()}")
 
         return self.tidy_data
 
@@ -1024,24 +1008,13 @@ class WrangleData:
             raise ValueError(f"Data type {data_type} not supported.")
 
         # type conversion
-        print(f"[OI_DEBUG8] Before type conversion - shape: {self.tidy_data.shape}, head:\n{self.tidy_data.head()}")
         self.tidy_data = self.tidy_data.apply(pd.to_numeric, errors='coerce').convert_dtypes()
-        print(f"[OI_DEBUG9] After type conversion - shape: {self.tidy_data.shape}, head:\n{self.tidy_data.head()}")
 
         # remove bad data
         if data_type not in ['funding_rates', 'open_interest']:
-            print(f"[OI_DEBUG10] Applying zero filter (should NOT apply for open_interest)")
             self.tidy_data = self.tidy_data[self.tidy_data != 0]  # 0 values
-        else:
-            print(f"[OI_DEBUG10] Skipping zero filter for {data_type}")
-        print(f"[OI_DEBUG11] After zero filter - shape: {self.tidy_data.shape}")
-
         self.tidy_data = self.tidy_data[~self.tidy_data.index.duplicated()]  # duplicate rows
-        print(f"[OI_DEBUG12] After duplicate filter - shape: {self.tidy_data.shape}")
-
         self.tidy_data = self.tidy_data.dropna(how='all').dropna(how='all', axis=1)  # entire row or col NaNs
-        print(f"[OI_DEBUG13] After dropna - shape: {self.tidy_data.shape}")
-        print(f"[OI_DEBUG14] Final result:\n{self.tidy_data.head()}")
 
         return self.tidy_data
 
